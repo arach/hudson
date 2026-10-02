@@ -3,6 +3,7 @@
 @import '../../packages/web/hudsonkit/src/styles/agent-composer.css';
 @import './editor.css';
 @import './theme.css';
+@import './overview.css';
 @source './app.tsx';
 
 @source './index.html';

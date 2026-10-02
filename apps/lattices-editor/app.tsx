@@ -1,3 +1,4 @@
+import { Overview } from './overview';
 import { applyUICommand, layoutState } from './ui';
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { HudsonApp } from '../../packages/web/hudsonkit/src/types/app';
@@ -9,7 +10,7 @@ import StatusBar from '../../packages/web/hudsonkit/src/components/chrome/Status
 import { createAgentComposer } from '../../packages/web/hudsonkit/src/agent-composer';
 import { createEditorLayoutPersistence, expandedPreset, selectionCountLabel } from './presentation';
 import type { AgentWorkspaceController } from '../../packages/web/hudsonkit/src/agent-workspace';
-import type { EditorModel } from './model';
+import { selectionForKeys, type EditorModel } from './model';
 import { isUnassigned, orderedGroups, relativeTime, removeContextRow, rowLabel, scrollRowIntoView, selectedRows, shortRevision, toggleRow } from './flow';
 const Context = createContext<EditorModel | null>(null);
 const useModel = () => { const model = useContext(Context); if (!model) throw new Error('Editor Provider required'); return model; };
@@ -136,16 +137,23 @@ function Content() {
     try { storage = globalThis.localStorage; } catch { /* Report on save. */ }
     return createEditorLayoutPersistence(storage, id);
   }, [id]);
+  const openWorkspace = (panel?: 'preview'|'source'|'history', ids?: string[], layerId?: string) => {
+    model.setView('workspace');
+    if (panel === 'source' && layerId && data.projection) model.selection.select(selectionForKeys(data.projection, data.projection.entries.filter(e=>e.layerId===layerId).map(e=>e.key), 'overview'));
+    else if (ids) model.selectRows(ids);
+    if (panel) shell.current?.showPanel(panel);
+  };
   if (data.status === 'unavailable') return <main className="fallback"><h1>Editor unavailable in this Lattices version</h1><p>Update Lattices to a version with the read-only Editor bridge.</p></main>;
   if (!persistence) return <main className="fallback"><h1>{data.status === 'error' ? "Can't read workspace layers" : 'Loading Workspace Layers…'}</h1>{data.error && <><p role="alert">{data.error}</p><button onClick={() => void model.retry()}>Retry</button></>}</main>;
-  return <main className="editor-root" data-chrome={data.chrome}>
+  return <main className="editor-root lv" data-chrome={data.chrome} data-view={data.view}>
     {data.chrome !== 'host' && <header className="editor-heading border-b border-border"><h1 className="text-[14px] font-semibold">{data.document?.subject.label}</h1><HudBadge tone="neutral" dot>Read only</HudBadge>
-      <HudToolbar className="header-actions"><HudButton variant="ghost" onClick={() => shell.current?.showPanel('source')}>Inspect Source</HudButton><HudToolbarSeparator /><HudButton variant="soft" onClick={() => shell.current?.setPanelLayout(expandedPreset())}>Expanded layout</HudButton></HudToolbar>
+      <div className="view-switch" role="group" aria-label="Layers view">{(['overview','workspace'] as const).map(view=><button key={view} aria-pressed={data.view===view} onClick={()=>model.setView(view)}>{view==='overview'?'Overview':'Workspace'}</button>)}</div><HudToolbar className="header-actions"><HudButton variant="ghost" onClick={() => openWorkspace('source')}>Inspect Source</HudButton><HudToolbarSeparator /><HudButton variant="soft" onClick={() => { openWorkspace(); shell.current?.setPanelLayout(expandedPreset()); }}>Expanded layout</HudButton></HudToolbar>
     </header>}
     {data.error && <div className="notice text-warning bg-warning/10" role="alert">Showing the last consistent view. {data.error} <button onClick={() => void model.retry()}>Retry</button></div>}
     {data.uiError && <div className="notice" role="alert">Layout controls could not sync. <button onClick={() => { if (shell.current) void model.reportLayout(layoutState(shell.current.getPanelLayout())); }}>Retry</button></div>}
     {storageNotice && <div className="notice" role="status">Layout could not be saved on this device.</div>}
-    <EditorPanels key={id} panels={panels} layout={persistence.getLayout()} onReady={controller => {
+    <div className="overview-view" hidden={data.view !== 'overview'}><Overview projection={data.projection} readAt={data.readAt} onOpen={openWorkspace}/></div>
+    <div className="workspace-view" hidden={data.view !== 'workspace'}><EditorPanels key={id} panels={panels} layout={persistence.getLayout()} onReady={controller => {
       uiUnsubscribe.current?.(); shell.current = controller;
       if (controller) {
         if (data.chrome === 'host') {
@@ -155,7 +163,7 @@ function Content() {
         uiUnsubscribe.current = model.subscribeUI(command => applyUICommand(controller, command));
         void model.reportLayout(layoutState(controller.getPanelLayout()));
       }
-    }} onLayoutChange={layout => { setStorageNotice(!persistence.save(layout)); void model.reportLayout(layoutState(layout)); }} />
+    }} onLayoutChange={layout => { setStorageNotice(!persistence.save(layout)); void model.reportLayout(layoutState(layout)); }} /></div>
     {data.chrome !== 'host' && <div className="editor-status"><StatusBar embedded status={{ label: 'READ ONLY', color: 'neutral' }} left={<>
       <span className="status-counts">{data.projection?.groups.filter(g => !isUnassigned(g)).length ?? 0} layers · {data.projection?.groups.flatMap(g => g.rows).length ?? 0} windows</span>
       <div className={selection.ambiguous ? 'selection-summary text-warning' : 'selection-summary text-muted-foreground'} role="status"><span>{selection.ambiguous ? `Matches ${selection.ranges.length} entries in Source (duplicates)` : selectionCountLabel(selectedRows(data.projection, selection).length)}</span>{selection.refs.length > 0 && <HudButton density="compact" variant="ghost" onClick={() => model.selection.clear()}>Clear</HudButton>}</div>

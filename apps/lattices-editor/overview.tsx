@@ -1,0 +1,40 @@
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { Projection } from './model';
+import { overviewFacts, contextLabel } from './overview-data';
+import { isUnassigned } from './flow';
+import { createAgentComposer } from '../../packages/web/hudsonkit/src/agent-composer';
+function LayerComposer({ label }: { label: string }) {
+  const host=useRef<HTMLDivElement>(null), composer=useRef<ReturnType<typeof createAgentComposer>|null>(null);
+  useLayoutEffect(()=>{ composer.current=createAgentComposer(host.current!, { minHeightPx:32, placeholder:'Ask about this layer…', ariaLabel:'Ask about this layer (unavailable)', onSubmit:()=>{} }); composer.current.header.append(composer.current.leadingTools); composer.current.header.hidden=false; return ()=>{composer.current?.destroy();composer.current=null;}; },[]);
+  useLayoutEffect(()=>{composer.current?.update({disabled:true,canSend:false,contextItems:[{id:'layer',label}],status:'Answers arrive in a later version'});},[label]);
+  return <div className="overview-composer" ref={host} />;
+}
+export function Overview({ projection, readAt, onOpen }: { projection: Projection | null; readAt:number|null; onOpen:(panel?:'preview'|'source'|'history', ids?:string[], layerId?:string)=>void }) {
+  const [selected,setSelected]=useState(''); const [now,setNow]=useState(Date.now);
+  useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t);},[]);
+  const groups=projection?.groups ?? []; const layers=groups.filter(g=>!isUnassigned(g)); const unassigned=groups.find(isUnassigned);
+  const group=groups.find(g=>g.id===selected) ?? layers[0] ?? unassigned;
+  if(!group || !projection) return <div className="overview-empty"><h1>No layers configured</h1><button onClick={()=>onOpen()}>Open Workspace ›</button></div>;
+  const facts=overviewFacts(projection,group.id); const index=layers.findIndex(g=>g.id===group.id);
+  const open=(panel?:'preview'|'source'|'history')=>onOpen(panel, facts.rows.map(r=>r.id), group.id);
+  const layerRow=(g:typeof group)=> <button key={g.id} aria-pressed={g.id===group.id} onClick={()=>setSelected(g.id)}><span className="layer-dot" data-open={!!g.rows.length}/><span>{g.label}</span><code>{isUnassigned(g)?g.rows.length:g.rows.length||'—'}</code></button>;
+  return <div className="overview">
+    <aside className="layer-index" aria-label="Layers"><h2>Layers <span>{layers.length}</span></h2><nav>{layers.map(layerRow)}</nav>{unassigned && <div className="unassigned-index">{layerRow(unassigned)}</div>}
+      <footer><div>workspace.json</div>{readAt!==null && <div>Read {Math.max(0,Math.floor((now-readAt)/1000))}s ago</div>}</footer>
+    </aside>
+    <div className="overview-main">
+      <div className="layer-picker"><span className="layer-dot" data-open={!!group.rows.length}/><select aria-label="Choose layer" value={group.id} onChange={e=>setSelected(e.target.value)}>{groups.map(g=><option value={g.id} key={g.id}>{g.label}</option>)}</select><span>⌄</span><code>{index>=0?`${index+1} of ${layers.length} · `:''}{facts.rows.length} open</code></div>
+      <article className="layer-reading"><div className="overview-content">
+        <div className="overview-eyebrow">{index>=0?`Layer · ${index+1} of ${layers.length}`:'Unassigned'}</div>
+        <h1>{group.label}</h1><p className="layer-description">{facts.description}</p>
+        <div className="layer-facts"><span>{facts.rows.length?'Active':'No open windows'}</span><span>{facts.rows.length} {facts.rows.length===1?'window':'windows'}</span>{index>=0 && <span>{facts.ruleCount} rules</span>}{facts.pinned!==undefined && <span>{facts.pinned} pinned</span>}{facts.displays.length>0 && <span>Display {facts.displays.join(', ')}</span>}</div>
+        <div className="overview-summary"><section><h2>Windows</h2>{facts.rows.length ? <ul>{facts.rows.map(row=><li key={row.id}><span title={row.title}>{row.title||row.app}</span><small>{row.app}</small></li>)}</ul>:<p className="overview-muted">No windows open.</p>}</section>
+          {facts.rules.length>0 && <section className="matched-by"><h2>Matched by</h2><dl>{facts.rules.map(rule=><Fragment key={rule.key}><dt>{rule.app ?? 'Rule'}</dt><dd>{rule.text}<small>{rule.open?`${rule.open} open`:'none'}{rule.occurrences>1?` · ${rule.occurrences} duplicate entries`:''}</small></dd></Fragment>)}</dl><button className="quiet-action" onClick={()=>open('source')}>View in Source ›</button></section>}
+        </div>
+        <div className="overview-preview-strip"><p>See where {facts.rows.length===1?'this window':`these ${facts.rows.length} windows`} would go. Nothing moves: this version only reads.</p><div><button className="quiet-action" onClick={()=>open('source')}>Show source</button><button className="primary" onClick={()=>open('preview')}>Preview layout</button></div></div>
+        <div className="overview-add"><h2>Add to this page</h2><div>{(['preview','source','history'] as const).map(panel=><button key={panel} onClick={()=>open(panel)}>+ {panel[0].toUpperCase()+panel.slice(1)}</button>)}</div></div>
+      </div><div className="overview-spacer"/><section className="overview-chat"><div><h2>Chat about this layer</h2><button className="quiet-action" onClick={()=>open()}>Open Workspace ›</button></div><LayerComposer label={contextLabel(group.label,facts.rows)}/></section>
+      </article>
+    </div>
+  </div>;
+}

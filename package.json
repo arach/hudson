@@ -27,7 +27,7 @@
     "build:lattices-editor": "bun apps/lattices-editor/build.ts",
     "test:lattices-editor": "bun test apps/lattices-editor",
     "typecheck:lattices-editor": "bun x tsc -p apps/lattices-editor/tsconfig.json",
-    "test:lattices-editor:browser": "bun apps/lattices-editor/build.ts --dev && bun apps/lattices-editor/design-check.ts && bun apps/lattices-editor/host-design-check.ts"
+    "test:lattices-editor:browser": "bun apps/lattices-editor/build.ts --dev && bun apps/lattices-editor/design-check.ts && bun apps/lattices-editor/host-design-check.ts && bun apps/lattices-editor/overview-design-check.ts"
   },
   "workspaces": [
     "apps/web",
@@ -40,6 +40,7 @@
   ],
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.4",
+    "@fontsource/cormorant-garamond": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@types/bun": "^1.3.14",
     "@types/jsdom": "^30.0.0",
