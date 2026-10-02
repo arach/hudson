@@ -3,8 +3,6 @@ import { createRoot } from 'react-dom/client';
 import { createHostBridge, createWKReplyTransport } from '../../packages/web/hudsonkit/src/editor/host-bridge';
 import { createEditorModel } from './model';
 import { createLatticesEditorApp } from './app';
-import '../../packages/web/hudsonkit/src/styles/agent-workspace.css';
-import './editor.css';
 let transport = createWKReplyTransport(globalThis as unknown as Parameters<typeof createWKReplyTransport>[0]);
 if (process.env.NODE_ENV !== 'production' && new URLSearchParams(location.search).has('mock')) {
   const mock = createMockTransport({ rich: true });

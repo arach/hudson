@@ -1,11 +1,15 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { HudsonApp } from '../../packages/web/hudsonkit/src/types/app';
 import { EditorPanels } from '../../packages/web/hudsonkit/src/editor-panels';
-import { createReadOnlyCodeSurface } from '../../packages/web/hudsonkit/src/editor/code-surface';
+import { CodeViewer } from '../../packages/web/hudsonkit/src/components/controls/CodeViewer';
+import { HudButton, HudBadge, HudToolbar, HudToolbarSeparator, HudListItem } from '../../packages/web/hudsonkit/src/components/primitives';
+import { HudGroupedList } from '../../packages/web/hudsonkit/src/components/patterns/HudGroupedList';
+import StatusBar from '../../packages/web/hudsonkit/src/components/chrome/StatusBar';
+import { createAgentComposer } from '../../packages/web/hudsonkit/src/agent-composer';
 import { createEditorLayoutPersistence, expandedPreset, selectionCountLabel } from './presentation';
 import type { AgentWorkspaceController } from '../../packages/web/hudsonkit/src/agent-workspace';
 import type { EditorModel } from './model';
-import { glyphTint, isUnassigned, orderedGroups, relativeTime, removeContextRow, rowLabel, scrollRowIntoView, selectedRows, shortRevision, toggleRow } from './flow';
+import { isUnassigned, orderedGroups, relativeTime, removeContextRow, rowLabel, scrollRowIntoView, selectedRows, shortRevision, toggleRow } from './flow';
 const Context = createContext<EditorModel | null>(null);
 const useModel = () => { const model = useContext(Context); if (!model) throw new Error('Editor Provider required'); return model; };
 const useData = () => { const model = useModel(); return useSyncExternalStore(model.subscribe, model.getSnapshot); };
@@ -13,20 +17,25 @@ const useSelection = () => { const model = useModel(); return useSyncExternalSto
 function Chat() {
   const model = useModel(); const { projection } = useData(); const selection = useSelection();
   const rows = selectedRows(projection, selection);
-  return <div className="context-panel">
-    <div className="context-chips" aria-label="Selected windows">
-      {rows.length ? rows.map(row => <span className="context-chip" key={row.id} title={rowLabel(row)}>
-        <span className={`app-glyph tint-${glyphTint(row.app)}`} aria-hidden="true">{Array.from(row.app)[0]?.toUpperCase() || '?'}</span>
-        <span className="chip-label">{rowLabel(row)}</span>
-        <button type="button" aria-label={`Remove ${rowLabel(row)}`} onClick={() => removeContextRow(model, row.id)}>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="m3 3 6 6m0-6-6 6" stroke="currentColor" strokeWidth="1.5" /></svg>
-        </button>
-      </span>) : <p className="context-hint">Select windows in Preview to add them as context.</p>}
-    </div>
-    <div className="context-examples"><p>When an agent is available, you can ask:</p>
-      <ul><li>Put these in Build and tile them</li><li>Explain why these windows are grouped together</li><li>Show me the settings for these windows</li></ul>
-    </div>
-    <textarea className="context-composer" aria-label="Ask about these windows (agent unavailable)" placeholder="Ask about these windows… (agent arrives in a later version)" disabled />
+  const host = useRef<HTMLDivElement>(null);
+  const chips = useRef<HTMLDivElement>(null);
+  const composer = useRef<ReturnType<typeof createAgentComposer> | null>(null);
+  useLayoutEffect(() => {
+    composer.current = createAgentComposer(host.current!, {
+      placeholder: 'Ask about these windows… (agent arrives in a later version)',
+      ariaLabel: 'Ask about these windows (agent unavailable)',
+      onSubmit: () => {}, onContextAction: item => removeContextRow(model, item.id),
+    });
+    chips.current!.append(composer.current.leadingTools);
+    return () => { composer.current?.leadingTools.remove(); composer.current?.destroy(); composer.current = null; };
+  }, [model]);
+  useLayoutEffect(() => { composer.current?.update({ disabled: true, canSend: false, contextActionsEnabled: true,
+    contextItems: rows.map(row => ({ id: row.id, label: rowLabel(row) + ' ×', title: 'Remove ' + rowLabel(row) })) }); }, [rows]);
+  return <div className="context-panel text-muted-foreground text-[12px]">
+    {!rows.length && <p className="context-hint">Select windows in Preview to add them as context.</p>}
+    <div ref={chips} className="context-chips hk-agent-composer" aria-label="Selected windows" />
+    <div className="context-examples"><p>When an agent is available, you can ask:</p><ul><li>Put these in Build and tile them</li><li>Explain why these windows are grouped together</li><li>Show me the settings for these windows</li></ul></div>
+    <div ref={host} className="composer-host" />
   </div>;
 }
 function Terminal() { return <div className="placeholder"><p>This read-only editor does not connect to a terminal.</p></div>; }
@@ -34,7 +43,7 @@ function History() {
   const { history } = useData();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(timer); }, []);
-  return <div className="history">{!history.length
+  return <div className="history text-[12px] text-muted-foreground">{!history.length
     ? <p className="hint">Changes made elsewhere (for example, the menu bar) appear here.</p>
     : <ol>{[...history].reverse().map((entry, i) =>
       <li key={`${entry.at}:${i}`}><span>Configuration changed</span>
@@ -57,7 +66,7 @@ function Preview() {
       if (first) scrollRowIntoView(rowNodes.current.get(first.id));
     }
   }, [selection]);
-  return <div className="preview" ref={list} role="listbox" aria-label="Windows" aria-multiselectable="true"
+  return <div className="preview focus-visible:outline focus-visible:outline-accent" ref={list} role="listbox" aria-label="Windows" aria-multiselectable="true"
     tabIndex={0} aria-activedescendant={activeRow ? optionId(activeRow.id) : undefined}
     onKeyDown={event => {
       const index = activeRow ? rows.findIndex(row => row.id === activeRow.id) : -1;
@@ -72,31 +81,24 @@ function Preview() {
       event.preventDefault();
       if (rows[next]) { setActive(rows[next].id); scrollRowIntoView(rowNodes.current.get(rows[next].id)); }
     }}>
-    {groups.map(group => <section key={group.id} role="group" aria-label={group.label}
-      className={isUnassigned(group) ? 'preview-group unassigned' : 'preview-group'}>
-      {!group.rows.length ? <p className="empty-group">{group.label} · no windows</p> : <>
-        <h2>{group.label}<span className="count-badge">{group.rows.length}</span></h2>
-        {group.rows.map(row => <div role="option" aria-selected={selected.includes(row.id)}
-          aria-label={rowLabel(row)} title={rowLabel(row)} className="preview-row" id={optionId(row.id)} key={row.id}
-          data-active={activeRow?.id === row.id} ref={node => { if (node) rowNodes.current.set(row.id, node); else rowNodes.current.delete(row.id); }}
-          onClick={event => { setActive(row.id); list.current?.focus({ preventScroll: true }); model.selectRows(toggleRow(selected, row.id, event.metaKey || event.ctrlKey)); }}>
-          <span className={`app-glyph tint-${glyphTint(row.app)}`} aria-hidden="true">{Array.from(row.app)[0]?.toUpperCase() || '?'}</span>
-          <span className="row-title">{row.title || 'Untitled window'}</span><span className="row-app">{row.app}</span>
-        </div>)}
-      </>}
-    </section>)}
+    <HudGroupedList groups={groups.map(group => ({ id: group.id, title: group.rows.length ? group.label : group.label + ' · no windows', count: group.rows.length || undefined, items: group.rows }))}
+      itemKey={row => row.id} renderTitle={row => row.title} stickyHeaders
+      groupClassName={group => group.id.toLowerCase() === 'unassigned' ? 'preview-group unassigned border-t border-border mt-3 pt-2' : 'preview-group'}
+      renderItem={row => <HudListItem role="option" aria-selected={selected.includes(row.id)} active={activeRow?.id === row.id} selected={selected.includes(row.id)}
+        aria-label={rowLabel(row)} title={rowLabel(row)} className="preview-row hover:bg-muted/40" id={optionId(row.id)}
+        data-active={activeRow?.id === row.id} elementRef={node => { if (node) rowNodes.current.set(row.id, node); else rowNodes.current.delete(row.id); }}
+        onMouseDown={event => event.preventDefault()}
+        tabIndex={-1}
+        onClick={event => { setActive(row.id); list.current?.focus({ preventScroll: true }); model.selectRows(toggleRow(selected, row.id, event.metaKey || event.ctrlKey)); }}>
+        <span className="row-content"><span className="app-glyph bg-muted text-muted-foreground rounded" aria-hidden="true">{Array.from(row.app)[0]?.toUpperCase() || '?'}</span>
+        <span className="row-title">{row.title || 'Untitled window'}</span><span className="row-app font-mono text-[10px] text-muted-foreground">{row.app}</span></span>
+      </HudListItem>} />
   </div>;
 }
 function Source() {
   const model = useModel(); const { document } = useData(); const selection = useSelection();
-  const host = useRef<HTMLDivElement>(null); const surface = useRef<ReturnType<typeof createReadOnlyCodeSurface> | null>(null);
-  useLayoutEffect(() => {
-    surface.current = createReadOnlyCodeSurface(host.current!, { text: '', onSelect: model.selectRanges });
-    return () => { surface.current?.destroy(); surface.current = null; };
-  }, [model]);
-  useLayoutEffect(() => { surface.current?.setText(document?.source.text ?? ''); }, [document?.source.text]);
-  useLayoutEffect(() => { surface.current?.highlight(selection.ranges, { scroll: selection.origin !== 'source' }); }, [selection]);
-  return <div className="source"><div className="source-label">workspace.json · layers subset</div><div className="code-host" ref={host} /></div>;
+  return <div className="source"><div className="source-label text-muted-foreground font-mono text-[11px] border-b border-border">workspace.json · layers subset</div>
+    <CodeViewer code={document?.source.text ?? ''} language="json" onSelectRanges={model.selectRanges} ranges={selection.ranges} revealRanges={selection.origin !== 'source'} className="code-host" /></div>;
 }
 function Content() {
   const model = useModel(); const data = useData(); const selection = useSelection();
@@ -119,18 +121,16 @@ function Content() {
   if (data.status === 'unavailable') return <main className="fallback"><h1>Editor unavailable in this Lattices version</h1><p>Update Lattices to a version with the read-only Editor bridge.</p></main>;
   if (!persistence) return <main className="fallback"><h1>{data.status === 'error' ? "Can't read workspace layers" : 'Loading Workspace Layers…'}</h1>{data.error && <><p role="alert">{data.error}</p><button onClick={() => void model.retry()}>Retry</button></>}</main>;
   return <main className="editor-root">
-    <header className="editor-heading"><h1>{data.document?.subject.label}</h1><span className="read-only-pill">Read only</span>
-      <div className="selection-summary" role="status">
-        <span title={selection.ambiguous ? `Matches ${selection.ranges.length} entries in Source (duplicates)` : undefined}>
-          {selection.ambiguous ? `Matches ${selection.ranges.length} entries in Source (duplicates)` : selection.refs.length
-            ? selectionCountLabel(selection.refs.filter(r => r.kind === 'lattices.window').length) : 'Select windows in Preview'}
-        </span>{selection.refs.length > 0 && <button type="button" onClick={() => model.selection.clear()}>Clear</button>}
-      </div>
-      <div className="header-actions"><button onClick={() => shell.current?.showPanel('source')}>Inspect Source</button><button onClick={() => shell.current?.setPanelLayout(expandedPreset())}>Expanded layout</button></div>
+    <header className="editor-heading border-b border-border"><h1 className="text-[14px] font-semibold">{data.document?.subject.label}</h1><HudBadge tone="neutral" dot>Read only</HudBadge>
+      <HudToolbar className="header-actions"><HudButton variant="ghost" onClick={() => shell.current?.showPanel('source')}>Inspect Source</HudButton><HudToolbarSeparator /><HudButton variant="soft" onClick={() => shell.current?.setPanelLayout(expandedPreset())}>Expanded layout</HudButton></HudToolbar>
     </header>
-    {data.error && <div className="notice" role="alert">Showing the last consistent view. {data.error} <button onClick={() => void model.retry()}>Retry</button></div>}
+    {data.error && <div className="notice text-warning bg-warning/10" role="alert">Showing the last consistent view. {data.error} <button onClick={() => void model.retry()}>Retry</button></div>}
     {storageNotice && <div className="notice" role="status">Layout could not be saved on this device.</div>}
     <EditorPanels key={id} panels={panels} layout={persistence.getLayout()} onReady={controller => { shell.current = controller; }} onLayoutChange={layout => setStorageNotice(!persistence.save(layout))} />
+    <div className="editor-status"><StatusBar embedded status={{ label: 'READ ONLY', color: 'neutral' }} left={<>
+      <span className="status-counts">{data.projection?.groups.filter(g => !isUnassigned(g)).length ?? 0} layers · {data.projection?.groups.flatMap(g => g.rows).length ?? 0} windows</span>
+      <div className={selection.ambiguous ? 'selection-summary text-warning' : 'selection-summary text-muted-foreground'} role="status"><span>{selection.ambiguous ? `Matches ${selection.ranges.length} entries in Source (duplicates)` : selectionCountLabel(selectedRows(data.projection, selection).length)}</span>{selection.refs.length > 0 && <HudButton density="compact" variant="ghost" onClick={() => model.selection.clear()}>Clear</HudButton>}</div>
+    </>} right={<><code title={data.document?.subject.revision ?? ''}>{shortRevision(data.document?.subject.revision ?? '')}</code><HudBadge tone={data.error ? 'warning' : 'accent'} dot>{data.error ? 'Stale' : 'Live'}</HudBadge></>} /></div>
   </main>;
 }
 export function createLatticesEditorApp(model: EditorModel): HudsonApp {

@@ -77,7 +77,7 @@ export function createMockTransport(options: { rich?: boolean } = {}) {
 export function mountMockControls(mock: ReturnType<typeof createMockTransport>) {
   const bar = document.createElement('aside');
   bar.setAttribute('aria-label', 'Development mock controls');
-  bar.style.cssText = 'position:fixed;bottom:0;right:0;z-index:100;background:#10191d;padding:4px;display:flex;gap:4px';
+  bar.style.cssText = 'position:fixed;bottom:32px;right:0;z-index:100;background:var(--hud-surface);padding:4px;display:flex;gap:4px';
   bar.append('Synthetic host ');
   for (const [label, action] of Object.entries({ Change: mock.change, Inventory: mock.inventory, Invalid: mock.invalid, Recover: mock.recover, Stale: mock.stale })) {
     const button = document.createElement('button'); button.textContent = label; button.onclick = action; bar.append(button);
