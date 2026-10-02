@@ -49,7 +49,7 @@ export function validateProjection(p: unknown, text: string): asserts p is Proje
 }
 export function selectionForKeys(projection: Projection, keys: string[], origin: string, rowIds: string[] = []): EditorSelection {
   const entries = projection.entries.filter(e => keys.includes(e.key));
-  const rows = projection.groups.flatMap(g => g.rows).filter(r => rowIds.includes(r.id) || r.entryKeys.some(k => keys.includes(k)));
+  const rows = projection.groups.flatMap(g => g.rows).filter(r => origin === 'preview' ? rowIds.includes(r.id) : rowIds.includes(r.id) || r.entryKeys.some(k => keys.includes(k)));
   return { origin, ambiguous: entries.some(e => e.ambiguous), ranges: entries.flatMap(e => e.ranges), refs: [
     ...entries.map(e => ({ kind: 'lattices.entry', id: e.key, label: e.layerId, detail: e.canonical, snapshotId: projection.snapshotId })),
     ...rows.map(r => ({ kind: 'lattices.window', id: r.id, label: r.title || r.app, snapshotId: projection.snapshotId })),

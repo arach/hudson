@@ -7,7 +7,7 @@ import '../../packages/web/hudsonkit/src/styles/agent-workspace.css';
 import './editor.css';
 let transport = createWKReplyTransport(globalThis as unknown as Parameters<typeof createWKReplyTransport>[0]);
 if (process.env.NODE_ENV !== 'production' && new URLSearchParams(location.search).has('mock')) {
-  const mock = createMockTransport();
+  const mock = createMockTransport({ rich: true });
   mountMockControls(mock);
   transport = mock.transport;
 }
