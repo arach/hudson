@@ -33,15 +33,15 @@
 .count-pill, .preview-group > div:first-child > span.inline-flex { font: 400 10.5px/1.5 var(--hud-font-mono); padding: 1px 5px; border: 0; border-radius: 4px; background: rgb(255 255 255 / .05); color: var(--hud-muted); letter-spacing: 0; text-transform: none; }
 .selected-count { color: var(--hud-accent-text); }
 .selected-count::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--hud-accent); }
-.clear-selection { padding-left: 8px; border-left: .5px solid var(--hud-line-strong); color: var(--hud-muted); font: inherit; cursor: pointer; }
+.clear-selection { padding: 0 0 0 8px; border: 0; background: transparent; outline: none; box-shadow: none; color: var(--hud-muted); font: inherit; cursor: pointer; }
 .clear-selection:hover { color: var(--hud-ink); }
 .ambiguity-label { color: var(--hud-status-warn); font-size: 10.5px; }
 .source-metadata { font: 10.5px/1.5 var(--hud-font-mono); }
 .preview-group > div:first-child { font: 600 12px/1.5 var(--hud-font-sans); color: var(--hud-ink); text-transform: none; letter-spacing: -.003em; padding: 8px 0; background: var(--hud-bg); }
-.preview-group > div:first-child::before { content: ''; width: 7px; height: 7px; border-radius: 2px; background: var(--hud-accent); }
+.preview-group > div:first-child::before { content: ''; width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--hud-accent); background: var(--hud-accent); }
 .preview-group > div:first-child > .flex-1 { height: .5px; background: var(--hud-line); }
 .preview-group.unassigned > div:first-child { color: var(--hud-muted); }
-.preview-group.unassigned > div:first-child::before { background: var(--hud-dim); }
+.preview-group.empty-group > div:first-child::before { background: transparent; border-color: var(--hud-dim); }
 .preview-row { border: .5px solid transparent; border-radius: 6px; }
 .preview-row:hover { background: var(--hud-hover); }
 .preview-row[aria-selected="true"] { background: var(--hud-accent-soft); border-color: var(--hud-accent-line); }
@@ -64,3 +64,5 @@
 code, .count-pill, [data-frame-panel="status-bar"], .cm-editor { font-variant-ligatures: none; }
 button:focus-visible { outline: 1px solid var(--hud-accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+
+.clear-selection:focus-visible { outline: 1px solid var(--hud-accent); outline-offset: 2px; }

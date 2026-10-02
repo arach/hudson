@@ -86,7 +86,7 @@ function Preview() {
     }}>
     <HudGroupedList groups={groups.map(group => ({ id: group.id, title: group.rows.length ? group.label : group.label + ' · no windows', count: group.rows.length || undefined, items: group.rows }))}
       itemKey={row => row.id} renderTitle={row => row.title} stickyHeaders
-      groupClassName={group => group.id.toLowerCase() === 'unassigned' ? 'preview-group unassigned border-t border-border mt-3 pt-2' : 'preview-group'}
+      groupClassName={group => `preview-group${group.items.length ? '' : ' empty-group'}${group.id.toLowerCase() === 'unassigned' ? ' unassigned border-t border-border mt-3 pt-2' : ''}`}
       renderItem={row => <HudListItem role="option" aria-selected={selected.includes(row.id)} active={activeRow?.id === row.id} selected={selected.includes(row.id)}
         aria-label={rowLabel(row)} title={rowLabel(row)} className="preview-row hover:bg-muted/40" id={optionId(row.id)}
         data-active={activeRow?.id === row.id} elementRef={node => { if (node) rowNodes.current.set(row.id, node); else rowNodes.current.delete(row.id); }}

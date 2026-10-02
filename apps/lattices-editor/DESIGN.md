@@ -51,8 +51,9 @@ the inherited error token is `#f04d59`. Ambiguous Source ranges use amber fill
 and a leading mark instead of the ordinary green selection treatment.
 
 Host groups have no color field. Overview dots indicate whether windows are
-open, not a layer's assigned color. Workspace group markers use the accent,
-with a neutral Unassigned fallback. Do not invent per-layer colors.
+open, not a layer's assigned color. Workspace uses the same rule, including Unassigned: filled green when windows
+are open, otherwise a hollow 1px faint ring. Clear is borderless quiet text,
+with an outline only on keyboard focus (:focus-visible). Do not invent per-layer colors.
 
 ## Typography
 

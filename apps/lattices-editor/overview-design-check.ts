@@ -20,6 +20,16 @@ try {
   await page.getByRole('button',{name:'+ Preview',exact:true}).click();await page.getByRole('listbox').waitFor();
   assert(await page.locator('.editor-root').getAttribute('data-view')==='workspace','Add Preview opens Workspace');
   assert(await editor!.evaluate(el=>el===document.querySelector('.cm-editor')),'Workspace retains CodeViewer across views');
+  const clear=page.locator('.clear-selection');
+  assert(await clear.evaluate(el=>['Top','Right','Bottom','Left'].every(side=>getComputedStyle(el).getPropertyValue('border-'+side.toLowerCase()+'-width')==='0px')),'Clear has no border');
+  assert(await clear.evaluate(el=>getComputedStyle(el).outlineStyle==='none'),'Clear has no pointer-focus outline');
+  await page.keyboard.press('Tab'); await clear.focus();
+  assert(await clear.evaluate(el=>el.matches(':focus-visible') && getComputedStyle(el).outlineStyle!=='none'),'Clear retains keyboard focus ring');
+  await clear.evaluate(el=>(el as HTMLElement).blur());
+  assert(await page.locator('.preview-group').evaluateAll(groups=>groups.every(group=>{
+    const style=getComputedStyle(group.firstElementChild!, '::before');
+    return group.querySelectorAll('[role=option]').length ? style.backgroundColor==='rgb(51, 199, 115)' : style.backgroundColor==='rgba(0, 0, 0, 0)' && style.borderTopWidth==='1px';
+  })),'Open groups have green dots; empty groups have hollow rings');
   await page.screenshot({path:`${import.meta.dir}/design-evidence/overview-to-workspace-${width}.png`});
   await page.reload();await page.getByRole('listbox').waitFor();assert(await page.locator('.editor-root').getAttribute('data-view')==='workspace','Workspace preference restores');
   await page.evaluate(()=>editorMock.command({command:'view',value:'overview'}));await page.locator('.layer-reading h1').waitFor();

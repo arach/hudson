@@ -79,7 +79,7 @@
 .overview-empty { padding:40px; }
 .lv .hk-agent-workspace__peer-panel-header { border-bottom-width:1px; }
 .lv .row-title,.lv .context-panel,.lv .history { font-size:var(--ui-read); }
-.lv .preview-row,.lv .preview-group.unassigned,.lv .context-examples li,.lv .composer-host .hk-agent-composer__shell,.lv .clear-selection { border-width:1px; }
+.lv .preview-row,.lv .preview-group.unassigned,.lv .context-examples li,.lv .composer-host .hk-agent-composer__shell { border-width:1px; }
 .lv .row-app { font-size:var(--ui-note); }
 @media(max-width:640px) {
  .overview { display:block; }
