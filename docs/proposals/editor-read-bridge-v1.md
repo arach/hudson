@@ -134,3 +134,11 @@ workspace configuration, membership or desktop state.
 
 Native Search is outside this extension; no search/filter command is defined.
 Narrow presentation never changes persisted wide layout or `ui.state` ordering.
+
+Native integration confirmation: `ui.command` uses the existing
+`hudson:host-event` CustomEvent carrying the v1 envelope. No subscriptionId or
+`at` field is needed. `ui.state` uses subjectId `workspace-layers`; panels are
+restricted to chat/preview/history/source. Legacy saved Terminal visibility is
+suppressed in host mode before initial synchronization. The first ui.state is
+emitted after the panel shell is ready, allowing native controls to stay disabled
+until then. `sourceOpen` equals inclusion of source in panels.

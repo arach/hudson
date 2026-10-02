@@ -7,7 +7,7 @@ export function isUICommand(value: unknown): value is UICommand {
   return p.command === 'toggleSource' || p.command === 'arrangement' && typeof p.value === 'string' && ['single','columns','rows','grid'].includes(String(p.value)) || p.command === 'togglePanel' && typeof p.value === 'string' && ['chat','preview','history','source'].includes(String(p.value));
 }
 export function layoutState(layout: AgentWorkspacePanelLayoutState) {
-  const panels = layout.order.filter(id => !layout.hiddenPanelIds.includes(id));
+  const panels = layout.order.filter(id => ['chat','preview','history','source'].includes(id) && !layout.hiddenPanelIds.includes(id));
   return { arrangement: layout.arrangement, panels, sourceOpen: panels.includes('source') };
 }
 export function applyUICommand(shell: AgentWorkspaceController, command: UICommand) {

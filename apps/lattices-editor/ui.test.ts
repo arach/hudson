@@ -51,3 +51,8 @@ test('ui.state failure is recoverable and never marks configuration stale', asyn
   fail=false; await model.reportLayout(layoutState(expandedPreset())); expect(model.getSnapshot().uiError).toBeNull();
   model.dispose();
 });
+test('native ui.state excludes Terminal from legacy saved layouts', () => {
+  const layout = expandedPreset(); layout.hiddenPanelIds = [];
+  expect(layoutState(layout).panels).toEqual(['chat','preview','history','source']);
+  layout.hiddenPanelIds=['source']; expect(layoutState(layout).sourceOpen).toBe(false);
+});

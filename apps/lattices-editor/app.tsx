@@ -148,6 +148,10 @@ function Content() {
     <EditorPanels key={id} panels={panels} layout={persistence.getLayout()} onReady={controller => {
       uiUnsubscribe.current?.(); shell.current = controller;
       if (controller) {
+        if (data.chrome === 'host') {
+          if (!layoutState(controller.getPanelLayout()).panels.length) controller.showPanel('preview');
+          controller.hidePanel('terminal');
+        }
         uiUnsubscribe.current = model.subscribeUI(command => applyUICommand(controller, command));
         void model.reportLayout(layoutState(controller.getPanelLayout()));
       }

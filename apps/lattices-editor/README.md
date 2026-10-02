@@ -37,7 +37,7 @@ request ID. Initial/restored layout and all changes are reported only in host mo
 
 `bun run build:lattices-editor` passed. Editor and kit typechecks passed.
 Scoped lint passed (only the existing missing-pages advisory). Unit tests:
-**30 passed, 0 failed, 111 assertions**. Browser checks passed at 1280×820 and
+**31 passed, 0 failed, 113 assertions**. Browser checks passed at 1280×820 and
 640×820 in standalone and host modes, including commands/state, chrome gating,
 header metadata, stable Source through layout and recovery, and narrow ordering.
 The full HudsonKit package build also passed.
@@ -74,7 +74,7 @@ separate. No push, merge or PR.
 
 ```text
 c3da4864461752e8e47563d00863f42e6ab4fa5fb19e9a56acc8f57170fc8dc8  editor.css
-bedff931079496384fc16cc8f13543f42bd1f007f6e383e5822c0ef0cc5ec133  editor.js
+54a1a1eec8928b11efc245bf03f74c3bbaf6841eb73433db52e7ff39ec12f85f  editor.js
 f8959618fcd68f274db3a9f718dcc1c495855e6a5bc0859944f2c31a06b0a83a  index.html
 403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b  jetbrains-mono-LICENSE.txt
 14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  jetbrains-mono-latin-400-normal.woff2
