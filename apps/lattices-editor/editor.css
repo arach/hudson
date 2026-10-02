@@ -34,7 +34,7 @@ body { margin: 0; }
 .notice { padding: 8px 12px; }
 .fallback { max-width: 600px; padding: 32px; }
 .fallback p { margin: 12px 0; }
-@container (max-width: 680px) {
+@container (max-width: 640px) {
   .hk-agent-workspace__peer-body { display: flex !important; flex-direction: column; overflow: auto; }
   .hk-agent-workspace__peer-panel { flex: 0 0 45vh; min-height: 260px; order: 2; }
   .hk-agent-workspace__peer-panel[hidden] { display: none; }
@@ -50,8 +50,27 @@ body { margin: 0; }
 }
 @media (max-width: 500px) { .editor-heading { flex-wrap: wrap; } }
 .composer-host .hk-agent-composer__body { margin-top: auto; }
-@container (max-width: 680px) { .composer-host .hk-agent-composer__body, .composer-host .hk-agent-composer__toolbar { display: none; } }
+@container (max-width: 640px) { .composer-host .hk-agent-composer__body, .composer-host .hk-agent-composer__toolbar { display: none; } }
 
-@container (max-width: 680px) { .composer-host, .context-examples { display: none; } }
+@container (max-width: 640px) { .composer-host, .context-examples { display: none; } }
 
 .composer-host { margin-top: auto; flex: none; }
+/* Host owns all page-level chrome, including the arrangement toolbar. */
+[data-chrome="host"] .hk-agent-workspace__peer-toolbar { display: none; }
+.hk-editor-panel-metadata { margin-left: auto; min-width: 0; }
+.panel-metadata { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.source-metadata code { overflow: hidden; text-overflow: ellipsis; }
+.preview { padding: 0 16px 16px; }
+.preview-row { height: 34px; }
+.app-glyph { width: 18px; height: 18px; }
+.context-hint { max-width: 40ch; }
+.context-examples li { min-height: 34px; display: flex; align-items: center; padding: 5px 10px; }
+@container (max-width: 640px) {
+  .hk-agent-workspace__peer-panel[data-panel-id=preview] { flex: 1 0 62vh; min-height: 62vh; }
+  .hk-agent-workspace__peer-panel[data-panel-id=source] { order: 2; }
+  .hk-agent-workspace__peer-panel[data-panel-id=history], .hk-agent-workspace__peer-panel[data-panel-id=terminal] { order: 3; }
+  [data-panel-id=chat] .hk-agent-workspace__peer-panel-header, .chat-empty, .context-label { display: none; }
+  .context-panel { gap: 0; }
+}
+
+.context-panel { overflow: auto; }

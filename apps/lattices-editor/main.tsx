@@ -5,7 +5,9 @@ import { createEditorModel } from './model';
 import { createLatticesEditorApp } from './app';
 let transport = createWKReplyTransport(globalThis as unknown as Parameters<typeof createWKReplyTransport>[0]);
 if (process.env.NODE_ENV !== 'production' && new URLSearchParams(location.search).has('mock')) {
-  const mock = createMockTransport({ rich: true });
+  const query = new URLSearchParams(location.search);
+  const mock = createMockTransport({ rich: true, chrome: query.has('host') ? 'host' : undefined, unreadable: query.has('unreadable') });
+  Object.assign(globalThis, { editorMock: mock });
   mountMockControls(mock);
   transport = mock.transport;
 }

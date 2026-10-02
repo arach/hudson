@@ -1,3 +1,4 @@
+import { applyUICommand, layoutState } from './ui';
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import type { HudsonApp } from '../../packages/web/hudsonkit/src/types/app';
 import { EditorPanels } from '../../packages/web/hudsonkit/src/editor-panels';
@@ -32,9 +33,10 @@ function Chat() {
   useLayoutEffect(() => { composer.current?.update({ disabled: true, canSend: false, contextActionsEnabled: true,
     contextItems: rows.map(row => ({ id: row.id, label: rowLabel(row) + ' ×', title: 'Remove ' + rowLabel(row) })) }); }, [rows]);
   return <div className="context-panel text-muted-foreground text-[12px]">
-    {!rows.length && <p className="context-hint">Select windows in Preview to add them as context.</p>}
+    {!rows.length && <div className="chat-empty"><h2>Arrange your windows</h2><p className="context-hint">Select windows in Preview to add them as context. An agent will help you arrange them in a later version.</p></div>}
+    {rows.length > 0 && <div className="small-caps context-label">Context</div>}
     <div ref={chips} className="context-chips hk-agent-composer" aria-label="Selected windows" />
-    <div className="context-examples"><p>When an agent is available, you can ask:</p><ul><li>Put these in Build and tile them</li><li>Explain why these windows are grouped together</li><li>Show me the settings for these windows</li></ul></div>
+    <div className="context-examples"><p>Try</p><ul><li>Put these in Build and tile them</li><li>Explain why these windows are grouped together</li><li>Show me the settings for these windows</li></ul></div>
     <div ref={host} className="composer-host" />
   </div>;
 }
@@ -91,25 +93,41 @@ function Preview() {
         tabIndex={-1}
         onClick={event => { setActive(row.id); list.current?.focus({ preventScroll: true }); model.selectRows(toggleRow(selected, row.id, event.metaKey || event.ctrlKey)); }}>
         <span className="row-content"><span className="app-glyph bg-muted text-muted-foreground rounded" aria-hidden="true">{Array.from(row.app)[0]?.toUpperCase() || '?'}</span>
-        <span className="row-title">{row.title || 'Untitled window'}</span><span className="row-app font-mono text-[10px] text-muted-foreground">{row.app}</span></span>
+        <span className="row-title">{row.title || 'Untitled window'}</span><span className="row-app text-muted-foreground">{row.app}</span>{selected.includes(row.id) && <span className="row-check" aria-hidden="true">✓</span>}</span>
       </HudListItem>} />
   </div>;
 }
 function Source() {
   const model = useModel(); const { document } = useData(); const selection = useSelection();
-  return <div className="source"><div className="source-label text-muted-foreground font-mono text-[11px] border-b border-border">workspace.json · layers subset</div>
+  return <div className="source" data-ambiguous={selection.ambiguous}>
     <CodeViewer code={document?.source.text ?? ''} language="json" onSelectRanges={model.selectRanges} ranges={selection.ranges} revealRanges={selection.origin !== 'source'} className="code-host" /></div>;
+}
+function PreviewHeader() {
+  const model = useModel(); const { projection } = useData(); const selection = useSelection();
+  const count = selectedRows(projection, selection).length;
+  return <div className="panel-metadata"><span className="count-pill">{projection?.groups.flatMap(g => g.rows).length ?? 0} windows</span>
+    {count > 0 && <><span className="selected-count">{count} selected</span><button className="clear-selection" onClick={() => model.selection.clear()}>Clear</button></>}
+    {selection.ambiguous && <span className="ambiguity-label" title={`Matches ${selection.ranges.length} entries in Source (duplicates)`}>Duplicates</span>}
+  </div>;
+}
+function SourceHeader() {
+  const { document } = useData(); const selection = useSelection();
+  const first = selection.ranges[0]; const text = document?.source.text ?? '';
+  const line = (offset: number) => text.slice(0, offset).split('\n').length;
+  return <div className="panel-metadata source-metadata"><code>workspace.json</code>{first && <span className="count-pill">lines {line(first.from)}–{line(first.to)}</span>}</div>;
 }
 function Content() {
   const model = useModel(); const data = useData(); const selection = useSelection();
   const shell = useRef<AgentWorkspaceController | null>(null);
+  const uiUnsubscribe = useRef<(() => void) | null>(null);
+  useEffect(() => () => uiUnsubscribe.current?.(), []);
   const [storageNotice, setStorageNotice] = useState(false);
   const panels = useMemo(() => [
     { id: 'chat', label: 'Chat', showActions: false, content: <Chat /> },
     { id: 'terminal', label: 'Terminal', showActions: false, content: <Terminal /> },
-    { id: 'preview', label: 'Preview', showActions: false, content: <Preview /> },
+    { id: 'preview', label: 'Preview', showActions: false, content: <Preview />, headerContent: <PreviewHeader /> },
     { id: 'history', label: 'History & Results', showActions: false, content: <History /> },
-    { id: 'source', label: 'Source', showActions: false, content: <Source /> },
+    { id: 'source', label: 'Source', showActions: false, content: <Source />, headerContent: <SourceHeader /> },
   ], []);
   const id = data.document?.subject.id;
   const persistence = useMemo(() => {
@@ -120,17 +138,24 @@ function Content() {
   }, [id]);
   if (data.status === 'unavailable') return <main className="fallback"><h1>Editor unavailable in this Lattices version</h1><p>Update Lattices to a version with the read-only Editor bridge.</p></main>;
   if (!persistence) return <main className="fallback"><h1>{data.status === 'error' ? "Can't read workspace layers" : 'Loading Workspace Layers…'}</h1>{data.error && <><p role="alert">{data.error}</p><button onClick={() => void model.retry()}>Retry</button></>}</main>;
-  return <main className="editor-root">
-    <header className="editor-heading border-b border-border"><h1 className="text-[14px] font-semibold">{data.document?.subject.label}</h1><HudBadge tone="neutral" dot>Read only</HudBadge>
+  return <main className="editor-root" data-chrome={data.chrome}>
+    {data.chrome !== 'host' && <header className="editor-heading border-b border-border"><h1 className="text-[14px] font-semibold">{data.document?.subject.label}</h1><HudBadge tone="neutral" dot>Read only</HudBadge>
       <HudToolbar className="header-actions"><HudButton variant="ghost" onClick={() => shell.current?.showPanel('source')}>Inspect Source</HudButton><HudToolbarSeparator /><HudButton variant="soft" onClick={() => shell.current?.setPanelLayout(expandedPreset())}>Expanded layout</HudButton></HudToolbar>
-    </header>
+    </header>}
     {data.error && <div className="notice text-warning bg-warning/10" role="alert">Showing the last consistent view. {data.error} <button onClick={() => void model.retry()}>Retry</button></div>}
+    {data.uiError && <div className="notice" role="alert">Layout controls could not sync. <button onClick={() => { if (shell.current) void model.reportLayout(layoutState(shell.current.getPanelLayout())); }}>Retry</button></div>}
     {storageNotice && <div className="notice" role="status">Layout could not be saved on this device.</div>}
-    <EditorPanels key={id} panels={panels} layout={persistence.getLayout()} onReady={controller => { shell.current = controller; }} onLayoutChange={layout => setStorageNotice(!persistence.save(layout))} />
-    <div className="editor-status"><StatusBar embedded status={{ label: 'READ ONLY', color: 'neutral' }} left={<>
+    <EditorPanels key={id} panels={panels} layout={persistence.getLayout()} onReady={controller => {
+      uiUnsubscribe.current?.(); shell.current = controller;
+      if (controller) {
+        uiUnsubscribe.current = model.subscribeUI(command => applyUICommand(controller, command));
+        void model.reportLayout(layoutState(controller.getPanelLayout()));
+      }
+    }} onLayoutChange={layout => { setStorageNotice(!persistence.save(layout)); void model.reportLayout(layoutState(layout)); }} />
+    {data.chrome !== 'host' && <div className="editor-status"><StatusBar embedded status={{ label: 'READ ONLY', color: 'neutral' }} left={<>
       <span className="status-counts">{data.projection?.groups.filter(g => !isUnassigned(g)).length ?? 0} layers · {data.projection?.groups.flatMap(g => g.rows).length ?? 0} windows</span>
       <div className={selection.ambiguous ? 'selection-summary text-warning' : 'selection-summary text-muted-foreground'} role="status"><span>{selection.ambiguous ? `Matches ${selection.ranges.length} entries in Source (duplicates)` : selectionCountLabel(selectedRows(data.projection, selection).length)}</span>{selection.refs.length > 0 && <HudButton density="compact" variant="ghost" onClick={() => model.selection.clear()}>Clear</HudButton>}</div>
-    </>} right={<><code title={data.document?.subject.revision ?? ''}>{shortRevision(data.document?.subject.revision ?? '')}</code><HudBadge tone={data.error ? 'warning' : 'accent'} dot>{data.error ? 'Stale' : 'Live'}</HudBadge></>} /></div>
+    </>} right={<><code title={data.document?.subject.revision ?? ''}>{shortRevision(data.document?.subject.revision ?? '')}</code><HudBadge tone={data.error ? 'warning' : 'accent'} dot>{data.error ? 'Stale' : 'Live'}</HudBadge></>} /></div>}
   </main>;
 }
 export function createLatticesEditorApp(model: EditorModel): HudsonApp {
