@@ -19,7 +19,7 @@ bun run test:lattices-editor:browser
 
 Bundle directory:
 `/Users/arach/dev/hudson-worktrees/lattices-editor-slice-1/apps/lattices-editor/dist/`.
-Embed all three files unchanged. There are no runtime HTTP requests or CDN assets.
+Embed every file unchanged, including the bundled JetBrains Mono font and license. There are no runtime HTTP requests or CDN assets.
 
 Production excludes the synthetic transport and controls. For an isolated fixture:
 
@@ -33,7 +33,7 @@ recovery and stale revisions. Both duplicate entries map to one key, all UTF-16
 ranges and one projected row. Without the explicit development flag and query,
 the client uses only the native handler. Generated bundles are ignored by git.
 
-## Verification (2026-10-01)
+## Verification (2026-10-02)
 
 - Production and development editor builds passed. Full HudsonKit package build
   also passed (including ESM, declarations and CSS).
@@ -41,7 +41,7 @@ the client uses only the native handler. Generated bundles are ignored by git.
 - Targeted lint over all changed TypeScript/TSX and build/config files passed
   (exit 0). Existing Next ESLint configuration prints a missing-pages-directory
   advisory; there are no lint findings.
-- Bun tests: **25 passed, 0 failed, 89 assertions**. Covers reply correlation,
+- Bun tests: **26 passed, 0 failed, 94 assertions**. Covers reply correlation,
   timeout, missing handler, disposal, revision mismatch, stale retry, generation/
   ABA protection, events before subscribe reply and during projection, null
   discovery revision, unavailable/recovery, bootstrap Retry, duplicate UTF-16
@@ -57,18 +57,16 @@ the client uses only the native handler. Generated bundles are ignored by git.
   The script asserts chips/removal, empty groups, Unassigned ordering, keyboard
   selection, both scroll directions, editor identity and range visibility after
   layout changes, History, narrow ordering/height and unchanged wide storage.
-- Design detector: only advisory undocumented type/color ramps; DESIGN.md
-  reconciles those tokens. Independent reviewer scored the narrow unused space,
-  Source scroll context and resize capture issues resolved and returned ship
-  for the reviewed design scope.
+- Fresh component review found badge contrast, invisible keyboard activity and
+  callback-triggered CodeViewer remounts. All three were corrected.
 - Production bundle string check confirms mock fixture and controls are absent.
 
 ## Read-only flow design pass
 
-The header combines title, Read only, selection summary/Clear and inspection
-actions. The existing layout toolbar remains a compact second row (28px);
-there is no header slot for it, so no shell fork was added. Panel headers are
-28px. showActions?: boolean is a generic panel option, defaulting to the
+The header combines title, a Read only badge and kit inspection actions.
+Selection and Clear live in the bottom StatusBar. The existing peer toolbar
+keeps its 32px controls and standard panel headers.
+showActions?: boolean is a generic panel option, defaulting to the
 existing visible menus; this app hides them. Panels still show/hide through
 the picker and reorder through drag or Alt+Arrow on the panel handle.
 
@@ -138,10 +136,18 @@ The native builder must import this approved bundle and run a separately authori
 live integration pass. Browser/mock verification is not native end-to-end proof.
 No push, merge or PR was performed.
 
-## Approved asset SHA-256
+## Asset SHA-256
 
 ```text
-ad57c97a9583367d73d9f86db4b0511a5243d199d777233c821d483d2d13ac7e  editor.css
-a9a549ed933d52714aa7812d792bf4c4cc9fe0306ec67cf4732c3ba0ef9949b0  editor.js
-73af1bc2c2f6f69c0674176a2ca4f3746cacebab8146ef26f07f307f0dce0e69  index.html
+29169eafdc1c975e92415ad93ffb5636a495f3146dd707eeeb7362d95d6cdb51  editor.css
+b3a550368c7aea87dd7439b7d9587a353fd87c1aa0ac7abd7f2dc9b5afb86042  editor.js
+de8f487e24e1b0488743fb798cad73d33fccad6c2e2f9675bec9612c79e417cc  index.html
+403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b  jetbrains-mono-LICENSE.txt
+14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  jetbrains-mono-latin-400-normal.woff2
 ```
+
+## Hudson register correction
+
+The editor now inherits the Hudson dark template and emerald accent; stale and ambiguous notices use semantic amber. Preview uses HudGroupedList and HudListItem; group counts and Read only use HudBadge. Header actions use HudButton and HudToolbar. The 32px peer toolbar is unchanged. The 28px chrome StatusBar owns counts, selection/Clear, revision and live status. Chat uses createAgentComposer with removable contextItems and disabled input/send. Source uses CodeViewer with an opt-in UTF-16 range-selection surface, preserving its CodeMirror instance, and a locally bundled JetBrains Mono font. editor.css contains layout only.
+
+Browser checks cover these components, inherited emerald token, disabled controls, both scroll directions, duplicate ranges, state retention and narrow ordering. The canvas URL was inaccessible; implementation follows the explicit operator mapping and checked-in kit. Match-reason hints remain omitted because the host does not report the winning reason.
