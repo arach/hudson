@@ -31,7 +31,7 @@ try {
     await page.getByRole('option', { name:'Synthetic Editor — Fixture document 1' }).waitFor();
     assert(await page.getByText('Scout · no windows', { exact:true }).textContent() === 'Scout · no windows', 'Empty groups must be one line');
     assert(await page.locator('.preview-group').last().getAttribute('aria-label') === 'Unassigned', 'Unassigned must be last');
-    assert(await page.locator('.preview-row').first().evaluate(el => el.getBoundingClientRect().height) === 30, 'Dense rows are 30px');
+    assert(await page.locator('.preview-row').first().evaluate(el => el.getBoundingClientRect().height) === 34, 'Rows are 34px');
     assert(await page.locator('.hk-agent-workspace__panel-actions:visible').count() === 0, 'Panel Actions should be hidden');
     assert(await page.locator('.hk-agent-workspace__arrangement-button').first().evaluate(el => el.getBoundingClientRect().height) === 32, 'Peer controls are 32px');
     assert(await page.getByRole('option').evaluateAll(elements => elements.every(el => (el as HTMLElement).tabIndex === -1)), 'Rows are not individual tab stops');
@@ -41,7 +41,7 @@ try {
     }
     assert(await page.locator('[data-frame-panel="status-bar"]').evaluate(el => el.getBoundingClientRect().height) === 28, 'Status bar is 28px');
     assert(await page.getByRole('button', { name:'Send message', includeHidden: true }).isDisabled(), 'Send remains disabled');
-    assert(await page.locator('html').evaluate(el => getComputedStyle(el).getPropertyValue('--accent').trim().split(/\s+/).map(Number).join(' ')) === '0.72 0.18 162', 'Hudson emerald token inherited');
+    assert(await page.locator('html').evaluate(el => getComputedStyle(el).getPropertyValue('--hud-accent').trim()) === '#33c773', 'Hudson emerald token inherited');
     assert(await page.locator('textarea').isDisabled(), 'Composer input stays disabled');
     await capture(page, 'initial', width);
     await list.focus(); await list.press('Home'); await list.press('ArrowDown'); await list.press('Space');
@@ -60,7 +60,7 @@ try {
     await page.getByRole('button', { name:'Remove Ghostty — Build logs 1', exact:true }).click();
     assert(await page.locator('[data-hk-context-item]').count() === 1, 'Removing one chip deselects one row');
     assert(await page.getByRole('option', { name:'Ghostty — Build logs 1', exact:true }).getAttribute('aria-selected') === 'false', 'Removed row is deselected');
-    await page.getByRole('button', { name:'Clear', exact:true }).click();
+    await page.getByRole('button', { name:'Clear', exact:true }).first().click();
     await page.getByRole('option', { name:'Synthetic Editor — Fixture document 1' }).click();
     await page.getByText('Matches 2 entries in Source (duplicates)', { exact:true }).waitFor();
     assert(await page.locator('.hk-code-selection').count() >= 2, 'All duplicate ranges highlighted');
@@ -76,7 +76,7 @@ try {
         original.call(this, options);
       };
     });
-    await page.getByRole('button', { name:'Clear', exact:true }).click();
+    await page.getByRole('button', { name:'Clear', exact:true }).first().click();
     await page.locator('.cm-line').filter({ hasText:'"Synthetic Editor 🚀"' }).first().click();
     await page.waitForFunction(() => (globalThis as unknown as { editorScrollCalls: string[] }).editorScrollCalls.some(id => id.startsWith('preview-row-')));
     await page.getByRole('option', { name:'Synthetic Editor — Fixture document 1', selected:true }).waitFor();

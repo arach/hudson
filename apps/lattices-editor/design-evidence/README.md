@@ -19,3 +19,13 @@ Viewport height is 820px. The filename suffix is the width.
 Narrow selected/history captures scroll the outer stack to show the relevant
 panels. Lower panels remain reachable by scrolling; they are not removed.
 The app remains read-only. These images do not substitute for WKWebView testing.
+
+## Layers page v7 host mode
+
+`host-main-1280`, `host-expanded-1280`, `host-narrow-640` and
+`host-states-{ambiguous,stale,unreadable}-1280` cover the requested board
+families. `host-context-source-1280` shows two context chips and Source reveal.
+`host-boards-contact-sheet.png` records the side-by-side implementation review.
+All are synthetic `?mock=1&host=1` captures; native chrome is intentionally absent.
+The remote reference canvas could not be fetched, so this is not a pixel-match
+comparison to its boards. No native application was launched.
