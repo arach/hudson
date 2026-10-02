@@ -13,7 +13,8 @@ bun run build:lattices-editor
 bun x tsc --noEmit -p apps/lattices-editor/tsconfig.json
 bun x tsc --noEmit -p packages/web/hudsonkit/tsconfig.json
 bun run lint apps/lattices-editor packages/web/hudsonkit/src/editor packages/web/hudsonkit/src/editor-panels.tsx packages/web/hudsonkit/src/editor-workspace.ts
-bun test apps/lattices-editor
+bun run test:lattices-editor
+bun run test:lattices-editor:browser
 ```
 
 Bundle directory:
@@ -40,7 +41,7 @@ the client uses only the native handler. Generated bundles are ignored by git.
 - Targeted lint over all changed TypeScript/TSX and build/config files passed
   (exit 0). Existing Next ESLint configuration prints a missing-pages-directory
   advisory; there are no lint findings.
-- Bun tests: **20 passed, 0 failed, 74 assertions**. Covers reply correlation,
+- Bun tests: **25 passed, 0 failed, 89 assertions**. Covers reply correlation,
   timeout, missing handler, disposal, revision mismatch, stale retry, generation/
   ABA protection, events before subscribe reply and during projection, null
   discovery revision, unavailable/recovery, bootstrap Retry, duplicate UTF-16
@@ -49,12 +50,53 @@ the client uses only the native handler. Generated bundles are ignored by git.
   directions, duplicate highlighting, live History/config updates, invalid-read
   recovery, stale retry, hide/reflow, move, focus, keyboard resize, reload
   persistence, narrow stacking without wide-layout overwrite, no console errors.
-- Desktop 1280×850 and narrow 500×850 screenshots:
-  `/tmp/hudson-editor-browser-check/desktop.png` and `mobile.png`.
-  Browser scripts and logs are in that same temporary evidence directory.
-- Impeccable detector: no findings. Independent finish reviewer scored the
-  bootstrap Retry fix resolved and returned ship for the reviewed UI scope.
+- Committed design evidence at 1280×820 and 640×820: [design-evidence](./design-evidence/).
+  Reproduce with bun run test:lattices-editor:browser; this builds a development
+  fixture and runs headless Chrome, never the native app. Set
+  EDITOR_BROWSER_EXECUTABLE for a different Chromium executable.
+  The script asserts chips/removal, empty groups, Unassigned ordering, keyboard
+  selection, both scroll directions, editor identity and range visibility after
+  layout changes, History, narrow ordering/height and unchanged wide storage.
+- Design detector: only advisory undocumented type/color ramps; DESIGN.md
+  reconciles those tokens. Independent reviewer scored the narrow unused space,
+  Source scroll context and resize capture issues resolved and returned ship
+  for the reviewed design scope.
 - Production bundle string check confirms mock fixture and controls are absent.
+
+## Read-only flow design pass
+
+The header combines title, Read only, selection summary/Clear and inspection
+actions. The existing layout toolbar remains a compact second row (28px);
+there is no header slot for it, so no shell fork was added. Panel headers are
+28px. showActions?: boolean is a generic panel option, defaulting to the
+existing visible menus; this app hides them. Panels still show/hide through
+the picker and reorder through drag or Alt+Arrow on the panel handle.
+
+Chat mirrors live window context as removable app/title chips, with honest
+disabled composer copy and noninteractive future examples. Preview uses
+30px keyboard-accessible rows, local initial glyphs, sticky group bands,
+single-line empty groups and Unassigned last. Arrow keys move the active row;
+Space/Enter selects; Cmd/Ctrl+Space toggles additive selection. Explicit row
+selection and chip removal remain exact even when multiple rows share one
+entry; this is an implementation fix, not a model or bridge contract change.
+
+Source reveals the first selected range using nearest, instant scrolling;
+Source selection reveals the matching Preview row. Duplicate ranges remain
+highlighted. The kit avoids reparenting unchanged panel nodes, preserving
+CodeMirror and scroll context during layout changes. Controlled text refresh
+keeps bounded cursor offsets.
+
+At narrow widths Preview comes first with at least 60vh, expanding into any
+unused height; Chat is a compact chips-only surface second. History and Source
+follow. This is CSS presentation only and does not alter saved wide layouts.
+History uses one empty-state line, newest-first relative times with absolute
+tooltips and short revision hashes.
+
+**Deliberately omitted:** pinned/matched reason hints. Entry.canonical describes
+the configured rule, pins and saved state, but not which reason actually won
+for this row (including companion/group matches). Reliable hints need an
+explicit native per-row match reason, ideally correlated to the winning entry
+key. No host or wire contract was changed or guessed.
 
 ## Starting preset restored to spec V2
 
@@ -99,7 +141,7 @@ No push, merge or PR was performed.
 ## Approved asset SHA-256
 
 ```text
-f47c38467762442d6fb3aa4d5f74bf72a59b70ec2c2076fa04386d63e78c65bb  editor.css
-c4b726c18398ce9848be71d677a48f5c217aa222b1c9e4570e586b3e3e79878d  editor.js
+ad57c97a9583367d73d9f86db4b0511a5243d199d777233c821d483d2d13ac7e  editor.css
+a9a549ed933d52714aa7812d792bf4c4cc9fe0306ec67cf4732c3ba0ef9949b0  editor.js
 73af1bc2c2f6f69c0674176a2ca4f3746cacebab8146ef26f07f307f0dce0e69  index.html
 ```
