@@ -1,6 +1,6 @@
 import type { HostEnvelope, HostTransport } from '../../packages/web/hudsonkit/src/editor/host-bridge';
 /** Synthetic development fixture. No membership resolver or production fallback. */
-export function createMockTransport(options: { rich?: boolean; chrome?: 'host'; unreadable?: boolean } = {}) {
+export function createMockTransport(options: { rich?: boolean; overview?: boolean; chrome?: 'host'; unreadable?: boolean } = {}) {
   let version = 1, inventory = 1, unreadable = options.unreadable ?? false, staleOnce = false;
   const listeners = new Set<(event: unknown) => void>();
   const calls: string[] = [];
@@ -10,7 +10,7 @@ export function createMockTransport(options: { rich?: boolean; chrome?: 'host'; 
   const subject = () => ({ id, kind: 'lattices.workspace-layers', label: 'Workspace Layers', revision: unreadable ? null : revision() });
   function fixture() {
     const project = { match: { app: 'Synthetic Editor 🚀' }, saved: false };
-    const additional = options.rich ? Array.from({ length: 12 }, (_, i) => ({
+    const additional = options.rich ? Array.from({ length: options.overview ? 2 : 12 }, (_, i) => ({
       match: { app: ['Ghostty', 'Xcode', 'Safari'][i % 3], title: ['Build logs', 'Workspace.swift', 'Design reference'][i % 3] + ' ' + (i + 1) },
       saved: false,
     })) : [];
@@ -18,7 +18,7 @@ export function createMockTransport(options: { rich?: boolean; chrome?: 'host'; 
       id: 'build', name: `Build ${version}`,
       ...(options.rich ? { notes: Array.from({ length: 30 }, (_, i) => `Synthetic configuration note ${i + 1}`) } : {}),
       projects: [project, project, ...additional],
-    }] }, null, 2);
+    }, ...(options.overview ? ['Research','Writing','Review','Design','Mail','Planning','Archive'].map((name,i)=>({id:`overview:${i}`,name,projects:[]})) : [])] }, null, 2);
     const needle = JSON.stringify(project, null, 2).split('\n').map((line, index) => index ? '        ' + line : line).join('\n');
     const first = text.indexOf(needle), second = text.indexOf(needle, first + 1);
     if (first < 0 || second < 0) throw new Error('Mock range fixture is invalid');
@@ -39,6 +39,10 @@ export function createMockTransport(options: { rich?: boolean; chrome?: 'host'; 
     if (options.rich) {
       projection.groups.unshift(projection.groups.pop()!);
       projection.groups.splice(1, 0, { id: 'scout', label: 'Scout', rows: [] });
+    }
+    if (options.overview) {
+      projection.groups = projection.groups.filter(g => g.id !== 'scout');
+      projection.groups.push(...['Research','Writing','Review','Design','Mail','Planning','Archive'].map((label,i)=>({id:`overview:${i}`,label,rows:[]})));
     }
     return { text, projection };
   }

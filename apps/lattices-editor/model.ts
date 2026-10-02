@@ -1,4 +1,4 @@
-import { isUICommand, type UICommand, type layoutState } from './ui';
+import { isUICommand, type UICommand, type EditorView, type layoutState } from './ui';
 import { createRevisionGuard, HostBridgeError, type HostBridge, type HostEnvelope } from '../../packages/web/hudsonkit/src/editor/host-bridge';
 import { createSubjectStore, type EditorSubject, type EditorSelection, type SourceRange } from '../../packages/web/hudsonkit/src/editor/subject-store';
 export interface Entry { key: string; layerId: string; canonical: string; ranges: SourceRange[]; ambiguous: boolean }
@@ -7,6 +7,7 @@ export interface Projection { snapshotId: string; groups: { id: string; label: s
 interface SubjectRead { subject: EditorSubject; source: { text: string; language: 'json' } }
 interface Capabilities { chrome?: 'host'; readOnly: boolean; methods: string[]; subject: Omit<EditorSubject, 'revision'> & { revision: string | null }; terminal: boolean }
 export interface EditorState {
+  view: EditorView; readAt: number | null;
   chrome: 'host' | 'standalone'; uiError: string | null;
   status: 'loading' | 'ready' | 'unavailable' | 'error'; error: string | null;
   document: SubjectRead | null; projection: Projection | null;
@@ -64,10 +65,11 @@ export function selectionForRanges(projection: Projection, ranges: SourceRange[]
 }
 export function createEditorModel(bridge: HostBridge) {
   const selection = createSubjectStore();
-  let state: EditorState = { chrome: 'standalone', uiError: null, status: 'loading', error: null, document: null, projection: null, history: [] };
+  let state: EditorState = { view: 'overview', readAt: null, chrome: 'standalone', uiError: null, status: 'loading', error: null, document: null, projection: null, history: [] };
   const uiListeners = new Set<(command: UICommand) => void>();
   const uiQueue: UICommand[] = [];
   let uiSend = Promise.resolve();
+  let lastLayout: ReturnType<typeof layoutState> | null = null;
   const listeners = new Set<() => void>();
   const guard = createRevisionGuard();
   let subjectId: string | null = null, disposed = false, refreshing = false, pending = false;
@@ -95,7 +97,7 @@ export function createEditorModel(bridge: HostBridge) {
           selection.select(selectionForKeys(projected.payload,
             previous.refs.filter(r => r.kind === 'lattices.entry').map(r => r.id), previous.origin,
             previous.refs.filter(r => r.kind === 'lattices.window').map(r => r.id)));
-          emit({ document: read.payload, projection: projected.payload, status: 'ready', error: null });
+          emit({ readAt: Date.now(), document: read.payload, projection: projected.payload, status: 'ready', error: null });
           staleRetries = 0;
         } catch (error) {
           if (disposed) break;
@@ -109,6 +111,7 @@ export function createEditorModel(bridge: HostBridge) {
   function receive(event: HostEnvelope) {
     if (event.kind === 'ui.command') {
       if (state.chrome !== 'host' || event.subjectId !== subjectId || !isUICommand(event.payload)) return;
+      if (event.payload.command === 'view') { setView(event.payload.value); return; }
       if (uiListeners.size) uiListeners.forEach(fn => fn(event.payload as UICommand));
       else { uiQueue.push(event.payload); if (uiQueue.length > 32) uiQueue.shift(); }
       return;
@@ -129,7 +132,9 @@ export function createEditorModel(bridge: HostBridge) {
           !['subject.read', 'preview.project', 'events.subscribe'].every(m => c.methods.includes(m)) ||
           capabilities.subjectId !== c.subject.id || capabilities.revision !== c.subject.revision) throw new HostBridgeError('unsupported', 'Required editor capability missing');
         subjectId = c.subject.id;
-        emit({ chrome: c.chrome === 'host' ? 'host' : 'standalone' });
+        let view: EditorView = 'overview';
+        try { if (globalThis.localStorage?.getItem(`lattices.editor.view.v1:${subjectId}`) === 'workspace') view = 'workspace'; } catch { /* Unavailable storage keeps the default. */ }
+        emit({ view, chrome: c.chrome === 'host' ? 'host' : 'standalone' });
         await bridge.request('events.subscribe', subjectId, null);
         if (disposed) return;
         subscribed = true;
@@ -138,20 +143,27 @@ export function createEditorModel(bridge: HostBridge) {
         if (!disposed) emit({ status: error instanceof HostBridgeError && error.code === 'unsupported' ? 'unavailable' : 'error', error: error instanceof Error ? error.message : 'Host unavailable' });
       }
     }
+  function setView(view: EditorView) {
+    emit({ view });
+    try { globalThis.localStorage?.setItem(`lattices.editor.view.v1:${subjectId}`, view); } catch { /* Session view still works. */ }
+    if (lastLayout) void reportLayout({ ...lastLayout, view });
+  }
+  function reportLayout(payload: ReturnType<typeof layoutState>) {
+    lastLayout = { ...payload, view: state.view };
+    if (state.chrome !== 'host' || disposed) return Promise.resolve();
+    const snapshot = lastLayout;
+    uiSend = uiSend.then(async () => {
+      if (disposed) return;
+      try { await bridge.request('ui.state', subjectId, null, snapshot); emit({ uiError: null }); }
+      catch (error) { if (!disposed) emit({ uiError: error instanceof Error ? error.message : 'Could not sync layout' }); }
+    });
+    return uiSend;
+  }
   return {
-    selection,
+    selection, setView, reportLayout,
     subscribeUI(listener: (command: UICommand) => void) {
       uiListeners.add(listener); uiQueue.splice(0).forEach(listener);
       return () => { uiListeners.delete(listener); };
-    },
-    reportLayout(payload: ReturnType<typeof layoutState>) {
-      if (state.chrome !== 'host' || disposed) return Promise.resolve();
-      uiSend = uiSend.then(async () => {
-        if (disposed) return;
-        try { await bridge.request('ui.state', subjectId, null, payload); emit({ uiError: null }); }
-        catch (error) { if (!disposed) emit({ uiError: error instanceof Error ? error.message : 'Could not sync layout' }); }
-      });
-      return uiSend;
     },
     getSnapshot: () => state,
     subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },

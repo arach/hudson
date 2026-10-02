@@ -142,3 +142,14 @@ restricted to chat/preview/history/source. Legacy saved Terminal visibility is
 suppressed in host mode before initial synchronization. The first ui.state is
 emitted after the panel shell is ready, allowing native controls to stay disabled
 until then. `sourceOpen` equals inclusion of source in panels.
+
+## Overview / Workspace extension (v8)
+
+`ui.command` also accepts `{ "command": "view", "value": "overview"|"workspace" }`.
+`ui.state` now includes `view` with those same values, in addition to arrangement,
+panels and sourceOpen. The initial view is Overview; the last choice is persisted
+per subject under `lattices.editor.view.v1:<subjectId>`. Switching view never resets
+the saved layout, unmounts panels or destroys CodeViewer. A view command emits the
+new state after the shell is ready. Overview panel shortcuts switch to Workspace
+and enable that panel. Native title-bar actions can send an explicit view command
+before layout commands; layout commands alone do not change the selected view.
