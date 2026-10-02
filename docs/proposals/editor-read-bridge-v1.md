@@ -92,3 +92,15 @@ subset. Entry key is `sha256:<hex>` over sorted compact JSON
 No other collections: pins/match/saved are nested in projects.
 Origin: `lattices-editor://bundle/index.html`.
 Host checkout: `/Users/arach/dev/lattices-editor-host-slice-1`.
+
+## Amendment 3 — unreadable subject (locked 2026-10-01 21:55)
+
+Capabilities still returns the subject descriptor when the subject cannot be
+read, with revision null in both descriptor and envelope. Subscription remains
+available. subject.read returns error code unavailable with its diagnostic.
+The client shows a recoverable “Can't read workspace layers” notice and the
+message; config.changed triggers a reread. After a good read, an invalid edit
+may invalidate at the last good revision. Recovery with unchanged content must
+also invalidate. A successful read and preview.project still require a non-null
+revision. “Editor unavailable in this Lattices version” is reserved for a missing
+handler or required capability, not an unreadable document.

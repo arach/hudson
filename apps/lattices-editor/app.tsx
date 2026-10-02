@@ -59,7 +59,7 @@ function Content() {
     return createPanelLayoutPersistence(storage, id, preset, Object.fromEntries(panels.map(p => [p.id, id])));
   }, [id, panels]);
   if (data.status === 'unavailable') return <main className="fallback"><h1>Editor unavailable in this Lattices version</h1><p>Update Lattices to a version with the read-only Editor bridge.</p></main>;
-  if (!persistence) return <main className="fallback"><h1>{data.status === 'error' ? 'Could not load the editor' : 'Loading Workspace Layers…'}</h1>{data.error && <><p role="alert">{data.error}</p><button onClick={() => void model.refresh()}>Retry</button></>}</main>;
+  if (!persistence) return <main className="fallback"><h1>{data.status === 'error' ? "Can't read workspace layers" : 'Loading Workspace Layers…'}</h1>{data.error && <><p role="alert">{data.error}</p><button onClick={() => void model.refresh()}>Retry</button></>}</main>;
   return <main className="editor-root">
     <header className="editor-heading"><h1>{data.document?.subject.label}</h1><span>Read only</span><button onClick={() => shell.current?.showPanel('source')}>Inspect Source</button><button onClick={() => shell.current?.setPanelLayout({ ...panelPreset(panels.map(p => p.id), ['chat', 'preview', 'history', 'source'], 'grid'), columnSizes: [1, 1, 1], rowSizes: [1, 1] })}>Expanded layout</button></header>
     {data.error && <div className="notice" role="alert">Showing the last consistent view. {data.error} <button onClick={() => void model.refresh()}>Retry</button></div>}

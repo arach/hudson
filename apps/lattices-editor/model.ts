@@ -4,7 +4,7 @@ export interface Entry { key: string; layerId: string; canonical: string; ranges
 export interface PreviewRow { id: string; windowId: number; app: string; title: string; layerId: string | null; entryKeys: string[] }
 export interface Projection { snapshotId: string; groups: { id: string; label: string; rows: PreviewRow[] }[]; entries: Entry[] }
 interface SubjectRead { subject: EditorSubject; source: { text: string; language: 'json' } }
-interface Capabilities { readOnly: boolean; methods: string[]; subject: EditorSubject; terminal: boolean }
+interface Capabilities { readOnly: boolean; methods: string[]; subject: Omit<EditorSubject, 'revision'> & { revision: string | null }; terminal: boolean }
 export interface EditorState {
   status: 'loading' | 'ready' | 'unavailable' | 'error'; error: string | null;
   document: SubjectRead | null; projection: Projection | null;
@@ -13,6 +13,10 @@ export interface EditorState {
 const record = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
 function isSubject(x: unknown): x is EditorSubject {
   return record(x) && ['id', 'kind', 'label', 'revision'].every(k => typeof x[k] === 'string' && (x[k] as string).length > 0);
+}
+function isDiscoverySubject(x: unknown): x is Capabilities['subject'] {
+  return record(x) && ['id', 'kind', 'label'].every(k => typeof x[k] === 'string' && x[k].length > 0) &&
+    (x.revision === null || typeof x.revision === 'string' && x.revision.length > 0);
 }
 function validateDocument(payload: unknown, id: string, revision: string | null): asserts payload is SubjectRead {
   if (!record(payload) || !isSubject(payload.subject) || payload.subject.id !== id ||
@@ -98,11 +102,11 @@ export function createEditorModel(bridge: HostBridge) {
     } finally { refreshing = false; }
   }
   function receive(event: HostEnvelope) {
-    if (event.subjectId !== subjectId || !['config.changed', 'windows.changed'].includes(event.kind) || !event.revision) return;
+    if (event.subjectId !== subjectId || !['config.changed', 'windows.changed'].includes(event.kind) ) return;
     const p = event.payload;
     if (!record(p) || typeof p.at !== 'string' || !Number.isFinite(Date.parse(p.at)) || typeof p.subscriptionId !== 'string') return;
     guard.invalidate(null);
-    if (event.kind === 'config.changed') emit({ history: [...state.history, { revision: event.revision, at: p.at }].slice(-1000) });
+    if (event.kind === 'config.changed' && event.revision) emit({ history: [...state.history, { revision: event.revision, at: p.at }].slice(-1000) });
     void refresh();
   }
   const unsubscribe = bridge.subscribe(receive);
@@ -114,16 +118,16 @@ export function createEditorModel(bridge: HostBridge) {
       try {
         const capabilities = await bridge.request<Capabilities>('capabilities', null, null);
         const c = capabilities.payload;
-        if (!record(c) || !isSubject(c.subject) || !Array.isArray(c.methods) || c.readOnly !== true ||
+        if (!record(c) || !isDiscoverySubject(c.subject) || !Array.isArray(c.methods) || c.readOnly !== true ||
           !['subject.read', 'preview.project', 'events.subscribe'].every(m => c.methods.includes(m)) ||
-          capabilities.subjectId !== c.subject.id || capabilities.revision !== c.subject.revision) throw new Error('Unsupported host');
+          capabilities.subjectId !== c.subject.id || capabilities.revision !== c.subject.revision) throw new HostBridgeError('unsupported', 'Required editor capability missing');
         subjectId = c.subject.id;
         await bridge.request('events.subscribe', subjectId, null);
         if (disposed) return;
         subscribed = true;
         await refresh();
       } catch (error) {
-        if (!disposed) emit({ status: 'unavailable', error: error instanceof Error ? error.message : 'Host unavailable' });
+        if (!disposed) emit({ status: error instanceof HostBridgeError && error.code === 'unsupported' ? 'unavailable' : 'error', error: error instanceof Error ? error.message : 'Host unavailable' });
       }
     },
     refresh,
