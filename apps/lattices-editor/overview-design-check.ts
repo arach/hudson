@@ -13,6 +13,9 @@ try {
   assert(await page.locator('.editor-root').getAttribute('data-view')==='overview','Overview default');
   assert(await page.locator('.layer-index nav button').count()===8,'Real fixture has eight layers');
   assert(!await page.locator('.workspace-view').isVisible(),'Workspace hidden without unmounting');
+  const headingStyle=()=>page.locator(".layer-reading h1").evaluate(el=>{const s=getComputedStyle(el);return {family:s.fontFamily,size:s.fontSize,weight:s.fontWeight,line:s.lineHeight,tracking:s.letterSpacing};});
+  const heading=await headingStyle();
+  assert(heading.size==="28px"&&heading.weight==="600"&&heading.family.includes("SF Pro Display")&&Math.abs(parseFloat(heading.line)-30.8)<.1&&Math.abs(parseFloat(heading.tracking)+.42)<.01,"Overview uses specified UI heading typography");
   const editor=await page.locator('.cm-editor').elementHandle();
   assert(await page.locator('.layer-picker').isVisible()===(width===560),'Narrow picker replaces index');
   assert(await page.locator('.matched-by').isVisible()===(width===1280),'Narrow hides match details');
@@ -35,6 +38,9 @@ try {
   await page.evaluate(()=>editorMock.command({command:'view',value:'overview'}));await page.locator('.layer-reading h1').waitFor();
   if(width===560)await page.getByLabel('Choose layer').selectOption('overview:0');else await page.locator('.layer-index').getByRole('button',{name:'Research —',exact:true}).click();
   await page.getByRole('heading',{name:'Research',exact:true}).waitFor();assert(await page.getByText('No windows are open.',{exact:true}).isVisible(),'Empty layer data');
+  if(width===560)await page.getByLabel("Choose layer").selectOption("unassigned");else await page.locator(".unassigned-index button").click();
+  await page.getByRole("heading",{name:"Unassigned",exact:true}).waitFor();
+  assert(JSON.stringify(await headingStyle())===JSON.stringify(heading),"Unassigned uses identical UI typography");
   assert(errors.length===0,errors.join('\n'));console.log(`PASS Overview ${width}: default, real counts, responsive picker, open panel, stable source, persisted view`);await page.close();
  }
 }finally{await browser.close();}

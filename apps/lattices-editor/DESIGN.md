@@ -13,7 +13,7 @@ real bridge data and remain read-only.
 
 The v8 visual authority is the operator's specification and the inspected
 Talkie `workflow-detail.ts` detail-content, glance and composer patterns:
-restrained index, top-spaced serif title, two-column facts, an 820px reading
+restrained index, top-spaced UI title, two-column facts, an 820px reading
 measure and a bottom-anchored composer. This is not a return to the prior
 rounded-UI preset. `overview.css` defines the `.lv` palette and overrides the
 underlying `theme.css` kit mappings for both views; `editor.css` retains
@@ -59,8 +59,8 @@ with an outline only on keyboard focus (:focus-visible). Do not invent per-layer
 
 The UI uses the system/SF Pro Text stack at 13px, weight 400 and line height 1.5,
 not SF Pro Rounded. Notes use 12px. Data uses JetBrains Mono at 12px or 11px;
-small tracked labels use weight 600. The layer title uses Cormorant Garamond,
-weight 400, 46px, line height 1.05 and -.02em tracking. Sidebar headings,
+small tracked labels use weight 600. The layer title uses the system/SF Pro Display stack,
+weight 600, 28px, line height 1.1 and -.015em tracking in ink. Sidebar headings,
 eyebrows and section labels use 10px weight-600 mono with 2px tracking.
 
 Workspace titles and body text follow the same `.lv` UI stack: row titles,
@@ -68,9 +68,9 @@ context and history are 13px; secondary app names are 12px UI, not monospace.
 Panel titles remain 13px semibold. Source code uses 12px JetBrains Mono with
 line height 1.6. Use tabular numerals and disable ligatures for code/data.
 
-Cormorant Garamond 400 and JetBrains Mono 400/600 are local WOFF2 assets; no
-remote font request is required. `build.ts` emits eight distribution files:
-HTML, CSS, JavaScript, three font files and two font licenses. The system UI
+JetBrains Mono 400/600 are local WOFF2 assets; no
+remote font request is required. `build.ts` emits six distribution files:
+HTML, CSS, JavaScript, two font files and one font license. The system UI
 font is not bundled.
 
 ## Layout

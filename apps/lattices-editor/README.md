@@ -3,7 +3,7 @@
 ## Embed
 
 Dist: `/Users/arach/dev/hudson-worktrees/lattices-editor-slice-1/apps/lattices-editor/dist/`.
-Bundle all eight files, including Cormorant Garamond 400, JetBrains Mono 400/600 and both licenses. No CDN or runtime HTTP requests.
+Bundle all six files, including JetBrains Mono 400/600 and its license. No CDN or runtime HTTP requests.
 Production excludes the synthetic host and developer controls.
 
 The native host opts into page mode with `capabilities.result.payload.chrome: "host"`.
@@ -26,7 +26,7 @@ Workspace stays mounted while Overview is visible, preserving CodeViewer,
 selection, panel state and the v3 layout preference.
 
 Overview follows Talkie's workflow-detail structure: 212px index, 820px reading
-column, serif layer title, windows/rule summary, preview/add-panel actions, and
+column, system UI layer title, windows/rule summary, preview/add-panel actions, and
 bottom-anchored disabled composer. At <=640px the index becomes a native picker,
 and Matched by is hidden. Actual data supplies counts, app lists, unmatched
 rules and optional pin/display facts. Duplicate rule occurrences are counted
@@ -45,7 +45,7 @@ claimed to pixel-match unseen boards. Independent review found no must-fix.
 ## Appearance and behavior
 
 - The .lv v8 palette in overview.css overrides both views: neutral surfaces, green actions and amber warnings.
-- SF Pro Text UI at 13px; JetBrains Mono 400/600 for data and labels. Cormorant Garamond 400 at 46px is reserved for the Overview layer name. 36px panel headers,
+- SF Pro Text UI at 13px; JetBrains Mono 400/600 for data and labels. Overview layer names use SF Pro Display/system UI at 28px, weight 600. 36px panel headers,
   34px window rows, 18px app tiles, count pills, selected checks and header dot.
 - Stable Hudson components: grouped list, list items, badges, composer, CodeViewer,
   peer panel mounts and optional standalone chrome.
@@ -103,9 +103,7 @@ Overview keeps the composer visible at 1280×650, 1280×820 and 560×650; only t
 ## SHA-256
 
 ```text
-732f37009943e7f4378cf37113c9bcc4716af002a8583511aa91ed5d37683e73  cormorant-garamond-LICENSE.txt
-8048ac209bec741e1c29cd0cfac5aac1c0c2ba8c3ddbd4a58fa9bd92ef5c63c2  cormorant-garamond-latin-400-normal.woff2
-1d35f5aa3b6f3cae5415a18a8e219b01bfbe117a4d26591f943a8bd09426c449  editor.css
+4055bfa32f008a52c684d2c05810adf1000ce98462d594fbf04fc28fc58919b7  editor.css
 55572e7e240ed22f96b6a052f79138bd0d9ac81987da82d597de939f1ce0f00e  editor.js
 6ceb52eedcfc21964230e4e1793d4e9703b7d76393b8a3808229b6c30c19c208  index.html
 403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b  jetbrains-mono-LICENSE.txt
