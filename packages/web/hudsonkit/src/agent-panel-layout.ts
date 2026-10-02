@@ -7,6 +7,8 @@ export interface AgentWorkspacePanel {
   label: string;
   content: Node;
   disabled?: boolean;
+  /** Hide the header menu; defaults to visible. */
+  showActions?: boolean;
 }
 
 export type AgentWorkspacePanelArrangement = 'single' | 'columns' | 'rows' | 'grid';
@@ -455,6 +457,7 @@ export function createAgentPanelLayout(
       const handle = frame.querySelector<HTMLButtonElement>('.hk-agent-workspace__panel-handle')!;
       const content = frame.querySelector<HTMLElement>('.hk-agent-workspace__peer-panel-content')!;
       const actionButtons = frame.querySelectorAll<HTMLButtonElement>('.hk-agent-workspace__panel-action');
+      frame.querySelector<HTMLElement>('.hk-agent-workspace__panel-actions')!.hidden = panel.showActions === false;
       handle.textContent = panel.label;
       handle.disabled = Boolean(panel.disabled);
       frame.setAttribute('aria-label', panel.label);

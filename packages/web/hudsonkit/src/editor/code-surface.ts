@@ -22,6 +22,7 @@ export function createReadOnlyCodeSurface(host: HTMLElement, options: {
   text: string; onSelect?: (ranges: SourceRange[]) => void;
 }) {
   let applying = false;
+  let revealRange: SourceRange | undefined;
   const view = new EditorView({ parent: host, state: EditorState.create({ doc: options.text, extensions: [
     EditorState.readOnly.of(true), EditorView.editable.of(false),
     EditorView.contentAttributes.of({ tabindex: '0', 'aria-label': 'Read-only source', 'aria-readonly': 'true' }),
@@ -32,6 +33,14 @@ export function createReadOnlyCodeSurface(host: HTMLElement, options: {
       if (!applying && update.selectionSet) options.onSelect?.(update.state.selection.ranges.map(r => ({ from: r.from, to: r.to })));
     }),
   ] }) });
+  const reveal = () => {
+    if (revealRange && host.getBoundingClientRect().height > 0) {
+      view.dispatch({ effects: EditorView.scrollIntoView(revealRange.from, { y: 'nearest', x: 'nearest' }) });
+    }
+  };
+  // Hidden panel mounts keep their editor. Reveal the current range when shown.
+  const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(reveal);
+  observer?.observe(host);
   return {
     setText(text: string) {
       if (view.state.doc.toString() === text) return;
@@ -39,10 +48,12 @@ export function createReadOnlyCodeSurface(host: HTMLElement, options: {
       try { view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, effects: setHighlights.of([]) }); }
       finally { applying = false; }
     },
-    highlight(ranges: readonly SourceRange[]) {
+    highlight(ranges: readonly SourceRange[], options: { scroll?: boolean } = {}) {
       const valid = ranges.filter(r => Number.isInteger(r.from) && Number.isInteger(r.to) && r.from >= 0 && r.to <= view.state.doc.length && r.from <= r.to);
-      view.dispatch({ effects: [setHighlights.of(valid), ...(valid[0] ? [EditorView.scrollIntoView(valid[0].from, { y: 'nearest' })] : [])] });
+      revealRange = options.scroll === false ? undefined : valid[0];
+      view.dispatch({ effects: setHighlights.of(valid) });
+      reveal();
     },
-    destroy: () => view.destroy(),
+    destroy: () => { observer?.disconnect(); view.destroy(); },
   };
 }

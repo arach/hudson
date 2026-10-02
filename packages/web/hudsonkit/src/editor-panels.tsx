@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { createAgentWorkspace, type AgentWorkspaceController } from './agent-workspace';
 import type { AgentWorkspacePanelLayoutState } from './agent-panel-layout';
-export interface EditorPanelRenderer { id: string; label: string; content: ReactNode; disabled?: boolean }
+export interface EditorPanelRenderer { id: string; label: string; content: ReactNode; disabled?: boolean; showActions?: boolean }
 /** One React tree: portals preserve the caller's Provider even when a panel hides. */
 export function EditorPanels({ panels, layout, onLayoutChange, onReady }: {
   panels: readonly EditorPanelRenderer[];
