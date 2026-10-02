@@ -5,8 +5,11 @@ import { createEditorModel } from './model';
 import { createLatticesEditorApp } from './app';
 import '../../packages/web/hudsonkit/src/styles/agent-workspace.css';
 import './editor.css';
-const mock = process.env.NODE_ENV !== 'production' && new URLSearchParams(location.search).has('mock') ? createMockTransport() : null;
-if (mock) mountMockControls(mock);
-const transport = mock?.transport ?? createWKReplyTransport(globalThis as unknown as Parameters<typeof createWKReplyTransport>[0]);
+let transport = createWKReplyTransport(globalThis as unknown as Parameters<typeof createWKReplyTransport>[0]);
+if (process.env.NODE_ENV !== 'production' && new URLSearchParams(location.search).has('mock')) {
+  const mock = createMockTransport();
+  mountMockControls(mock);
+  transport = mock.transport;
+}
 const app = createLatticesEditorApp(createEditorModel(createHostBridge(transport)));
 createRoot(document.getElementById('root')!).render(<app.Provider><app.slots.Content /></app.Provider>);
