@@ -29,3 +29,14 @@ families. `host-context-source-1280` shows two context chips and Source reveal.
 All are synthetic `?mock=1&host=1` captures; native chrome is intentionally absent.
 The remote reference canvas could not be fetched, so this is not a pixel-match
 comparison to its boards. No native application was launched.
+
+## Overview v8
+
+- `overview-1280.png`: initial Overview, eight synthetic layers and three open windows.
+- `overview-560.png`: picker, single summary column, fully visible disabled composer.
+- `overview-to-workspace-1280.png` / `overview-to-workspace-560.png`: after + Preview.
+
+Existing Workspace/States captures were refreshed with the v8 font, palette and lines.
+No spatial thumbnail is drawn: the native projection contract supplies no frames.
+Reference v8 canvas inaccessible; inspected against the written brief and Talkie's
+local workflow-detail.ts/style.css, not against unseen reference pixels.

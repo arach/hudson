@@ -3,7 +3,7 @@
 ## Embed
 
 Dist: `/Users/arach/dev/hudson-worktrees/lattices-editor-slice-1/apps/lattices-editor/dist/`.
-Bundle all five files, including JetBrains Mono and its license. No CDN or runtime HTTP requests.
+Bundle all eight files, including Cormorant Garamond 400, JetBrains Mono 400/600 and both licenses. No CDN or runtime HTTP requests.
 Production excludes the synthetic host and developer controls.
 
 The native host opts into page mode with `capabilities.result.payload.chrome: "host"`.
@@ -16,10 +16,36 @@ for `ui.command` and serialized `ui.state`. The UI operations use the discovered
 subject ID and null revision. `ui.state.result` has an empty payload and correlated
 request ID. Initial/restored layout and all changes are reported only in host mode.
 
+## Overview / Workspace (v8)
+
+Overview is the first-open default. The last view is persisted per subject under
+`lattices.editor.view.v1:<subjectId>`. Native sends
+`ui.command {command:"view",value:"overview"|"workspace"}`; every ui.state now
+includes `view`. Standalone adds an Overview/Workspace segmented control.
+Workspace stays mounted while Overview is visible, preserving CodeViewer,
+selection, panel state and the v3 layout preference.
+
+Overview follows Talkie's workflow-detail structure: 212px index, 820px reading
+column, serif layer title, windows/rule summary, preview/add-panel actions, and
+bottom-anchored disabled composer. At <=640px the index becomes a native picker,
+and Matched by is hidden. Actual data supplies counts, app lists, unmatched
+rules and optional pin/display facts. Duplicate rule occurrences are counted
+from host ranges. Thumbnail omitted because the bridge supplies no frames;
+no spatial layout is invented. Source links reveal this layer's entry ranges,
+including unmatched rules. Preview layout opens the existing read-only Preview.
+
+Run the Overview fixture with `?mock=1&host=1&overviewfixture=1`.
+Evidence: overview-1280.png, overview-560.png, overview-to-workspace-1280.png,
+overview-to-workspace-560.png. Tests cover default/restored views, native view
+commands/state, data-derived facts, narrow picker, panel shortcuts and stable
+CodeViewer across view switches. Remote v8 canvas remained inaccessible; this
+was compared with the explicit specification and local Talkie source, not
+claimed to pixel-match unseen boards. Independent review found no must-fix.
+
 ## Appearance and behavior
 
-- Lattices native preset in theme.css: neutral surfaces, running green, amber warnings.
-- SF Rounded UI at 12.5px; JetBrains Mono only for data. 36px panel headers,
+- The .lv v8 palette in overview.css overrides both views: neutral surfaces, green actions and amber warnings.
+- SF Pro Text UI at 13px; JetBrains Mono 400/600 for data and labels. Cormorant Garamond 400 at 46px is reserved for the Overview layer name. 36px panel headers,
   34px window rows, 18px app tiles, count pills, selected checks and header dot.
 - Stable Hudson components: grouped list, list items, badges, composer, CodeViewer,
   peer panel mounts and optional standalone chrome.
@@ -28,7 +54,7 @@ request ID. Initial/restored layout and all changes are reported only in host mo
 - Both selection directions reveal their counterpart. Duplicate Source ranges are
   amber; stale configuration keeps the last good view under an amber banner.
   An initial unreadable workspace offers Retry and recovers on config.changed.
-- First open remains Chat plus wider Preview (38:62). Expanded remains filled 2×2.
+- First open is Overview. Workspace retains Chat plus wider Preview (38:62); Expanded remains filled 2×2.
   Panels open on demand. The v3 layout namespace preserves chosen layouts.
 - At ≤640px: Preview ≥62vh, context strip, Source, then other enabled panels.
   CSS fallback does not rewrite the saved wide layout or ui.state ordering.
@@ -37,7 +63,7 @@ request ID. Initial/restored layout and all changes are reported only in host mo
 
 `bun run build:lattices-editor` passed. Editor and kit typechecks passed.
 Scoped lint passed (only the existing missing-pages advisory). Unit tests:
-**31 passed, 0 failed, 113 assertions**. Browser checks passed at 1280×820 and
+**34 passed, 0 failed, 130 assertions**. Browser checks passed at 1280×820 and
 640×820 in standalone and host modes, including commands/state, chrome gating,
 header metadata, stable Source through layout and recovery, and narrow ordering.
 The full HudsonKit package build also passed.
@@ -73,9 +99,12 @@ separate. No push, merge or PR.
 ## SHA-256
 
 ```text
-c3da4864461752e8e47563d00863f42e6ab4fa5fb19e9a56acc8f57170fc8dc8  editor.css
-54a1a1eec8928b11efc245bf03f74c3bbaf6841eb73433db52e7ff39ec12f85f  editor.js
-f8959618fcd68f274db3a9f718dcc1c495855e6a5bc0859944f2c31a06b0a83a  index.html
+732f37009943e7f4378cf37113c9bcc4716af002a8583511aa91ed5d37683e73  cormorant-garamond-LICENSE.txt
+8048ac209bec741e1c29cd0cfac5aac1c0c2ba8c3ddbd4a58fa9bd92ef5c63c2  cormorant-garamond-latin-400-normal.woff2
+0dab93e96b8184e03f95db3feb8903203a98b0024b08bd3f4f5ba5b68b50249e  editor.css
+5069baf4ec01686c4b677320442dbb74d9db42c7d47158fbe2512e971772daea  editor.js
+6ceb52eedcfc21964230e4e1793d4e9703b7d76393b8a3808229b6c30c19c208  index.html
 403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b  jetbrains-mono-LICENSE.txt
 14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  jetbrains-mono-latin-400-normal.woff2
+400c6bfda18d5d14acad1c15d6dcb9f8e13c015e7286317e0b9a482539bef147  jetbrains-mono-latin-600-normal.woff2
 ```

@@ -17,7 +17,7 @@ async function capture(page: Page, name: string) {
 try {
   const page = await browser.newPage({ viewport:{width:1280,height:820}, reducedMotion:'reduce' });
   const errors: string[]=[]; page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(url); await page.getByRole('listbox').waitFor();
+  await page.goto(url); await page.waitForFunction(()=>editorMock.uiStates.length>0); await command(page,{command:'view',value:'workspace'}); await page.getByRole('listbox').waitFor();
   assert(await page.locator('.editor-heading,.editor-status').count()===0,'Host must have no web page chrome');
   assert(!await page.locator('.hk-agent-workspace__peer-toolbar').isVisible(),'Host owns arrangement toolbar');
   assert(await page.locator('[data-panel-id=preview]').evaluate(el=>el.getBoundingClientRect().top)===0,'Panels begin at top');
@@ -54,7 +54,7 @@ try {
   await initialError.goto(url+'&unreadable=1'); await initialError.getByText("Can't read workspace layers",{exact:true}).waitFor();
   await capture(initialError,'states-unreadable-1280');
   await initialError.getByRole('button',{name:'Retry',exact:true}).click(); await initialError.evaluate(()=>editorMock.recover());
-  await initialError.getByRole('listbox').waitFor();
+  await initialError.waitForFunction(()=>editorMock.uiStates.length>0); await command(initialError,{command:'view',value:'workspace'}); await initialError.getByRole('listbox').waitFor();
   assert(errors.length===0,errors.join('\n')); await initialError.close();
   console.log('PASS host: no duplicate chrome, ui.command/ui.state, header counts, 34px rows, 36px headers, stable Source, states and narrow ordering');
   const sheet = await browser.newPage({viewport:{width:1600,height:1420}});

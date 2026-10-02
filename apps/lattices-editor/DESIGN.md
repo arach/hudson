@@ -1,192 +1,200 @@
 ---
 name: Lattices Editor
-description: Read-only Layers inspection with the Lattices preset and Hudson peer-panel components.
+description: Read-only Layers Overview with a persistent Hudson Workspace for inspection.
 ---
 
 # Lattices Editor
 
 ## Overview
 
-The direction is Operate: a Layers page inside Lattices, built with Hudson's
-actual peer-panel, list, composer and source components. The Lattices preset
-in `theme.css` adapts kit tokens and component presentation to native
-`HudTheme.lattices` / `Palette`. `editor.css` owns layout. This supersedes the
-previous unmodified Hudson dark register; it does not replace the kit.
+Layers opens on **Overview** by default. It explains the selected layer before
+opening the denser **Workspace** for Preview, Source or History. Both views use
+real bridge data and remain read-only.
 
-Chrome ownership is capability-gated. With `chrome: 'host'`, native Lattices owns
-page chrome and panels start at the top. Without that capability, standalone
-web chrome remains available.
+The v8 visual authority is the operator's specification and the inspected
+Talkie `workflow-detail.ts` detail-content, glance and composer patterns:
+restrained index, top-spaced serif title, two-column facts, an 820px reading
+measure and a bottom-anchored composer. This is not a return to the prior
+rounded-UI preset. `overview.css` defines the `.lv` palette and overrides the
+underlying `theme.css` kit mappings for both views; `editor.css` retains
+Workspace layout rules.
 
-The remote reference canvas was inaccessible. The operator's explicit mapping,
-local implementation and native theme are the available authority. The
-`design-evidence/host-boards-contact-sheet.png` compares shipped Main, Expanded,
-Narrow and States equivalents internally; it is not evidence of a match to
-unseen canvas boards.
+The remote canvas remains unavailable. Local wide/narrow captures verify the
+implemented specification and internal consistency, not a match to unseen
+canvas boards. The earlier Main/Expanded/Narrow/States contact sheet documents
+the Workspace pass, not proof of the v8 Overview's reference fidelity.
 
 ## Colors
 
-`theme.css` is the preset source of truth. The background is `#141416`; panel
-surfaces are `#1a1a1a`. White ink uses .92 opacity, secondary text .58 and dim
-text .40. Borders use white at .08; stronger lines and hover use .14.
+The `.lv` palette in `overview.css` is authoritative:
 
-The Lattices accent is `#33c773`, with a .12 selection fill, .32 selection
-border and `#8fe6b6` accent text. It marks selected windows, context, focus and
-live state. Semantic amber `#f5a623` identifies duplicates, stale reads and
-recoverable notices; the preset's error token is `#f04d59`. Ambiguous Source
-ranges use amber fill and an amber leading mark, not the normal green mark.
+| Role | Value |
+| --- | --- |
+| Sidebar | `#17191d` |
+| Page | `#131417` |
+| Card | `#1c1f24` |
+| Raised surface | `#24282e` |
+| Floor | `#101114` |
+| Soft / normal / lit lines | white at `.07` / `.11` / `.17` |
+| Ink | `#ecedef` |
+| Dim ink | `#d3d5d8` |
+| Muted | `#b0b3b8` |
+| Faint | `#92969d` |
+| Subtle | `#6c7178` |
+| Green | `#33c773` |
+| Green text | `#7fdca6` |
 
-Host groups have no color field. Layer markers therefore use the accent, with
-a dim neutral fallback for Unassigned. Do not invent per-layer colors. App
-initials use neutral muted tiles.
+Green is reserved for open-layer indicators, selection, context and primary
+navigation into Preview. A very faint green radial wash sits above Overview
+content. Semantic amber `#f5a623` remains for ambiguity and recoverable notices;
+the inherited error token is `#f04d59`. Ambiguous Source ranges use amber fill
+and a leading mark instead of the ordinary green selection treatment.
+
+Host groups have no color field. Overview dots indicate whether windows are
+open, not a layer's assigned color. Workspace group markers use the accent,
+with a neutral Unassigned fallback. Do not invent per-layer colors.
 
 ## Typography
 
-The UI uses `ui-rounded`, SF Pro Rounded and system fallbacks. Data uses bundled
-JetBrains Mono. The preset applies tabular numerals; code, count pills and
-status data disable ligatures.
+The UI uses the system/SF Pro Text stack at 13px, weight 400 and line height 1.5,
+not SF Pro Rounded. Notes use 12px. Data uses JetBrains Mono at 12px or 11px;
+small tracked labels use weight 600. The layer title uses Cormorant Garamond,
+weight 400, 46px, line height 1.05 and -.02em tracking. Sidebar headings,
+eyebrows and section labels use 10px weight-600 mono with 2px tracking.
 
-- Panel titles: 13px, weight 600, letter spacing -.01em.
-- Layer headings: 12px, weight 600.
-- Window titles: 12.5px, weight 400; selected titles use weight 500.
-- Secondary app names: 11.5px rounded UI, not monospace.
-- Panel metadata and context items: 11.5px.
-- Count pills and Source metadata: 10.5px monospace.
-- Empty-state heading: 19px, weight 700, line height 1.2.
-- Context guidance: 12.5px, line height 1.55; examples: 12px.
-- Context and Try labels: 10px, weight 600, uppercase, .08em tracking.
-- Source code: 12px JetBrains Mono, line height 1.6.
-- Standalone subject title: 14px semibold.
+Workspace titles and body text follow the same `.lv` UI stack: row titles,
+context and history are 13px; secondary app names are 12px UI, not monospace.
+Panel titles remain 13px semibold. Source code uses 12px JetBrains Mono with
+line height 1.6. Use tabular numerals and disable ligatures for code/data.
+
+Cormorant Garamond 400 and JetBrains Mono 400/600 are local WOFF2 assets; no
+remote font request is required. `build.ts` emits eight distribution files:
+HTML, CSS, JavaScript, three font files and two font licenses. The system UI
+font is not bundled.
 
 ## Layout
 
-- Host mode omits the web subject/action header and bottom status bar and hides
-  the peer arrangement toolbar. Normal operation starts with panel headers at
-  the top; recoverable notices can appear above them.
-- Standalone mode retains the 46px-minimum subject/action header, dotted Read
-  only badge, Inspect Source and Expanded layout buttons, existing 32px peer
-  toolbar and 28px bottom `StatusBar`. Its bottom bar retains selection/Clear,
-  layer/window counts, revision and Live/Stale state. Counts hide below 700px;
-  the subject header can wrap below 500px.
-- Panel headers are 36px tall with 16px horizontal padding. Preview and Source
-  metadata use reusable `EditorPanels` header slots in both chrome modes.
-- First open shows Chat and Preview side by side at 38:62. Source, History &
-  Results and Terminal are initially hidden. Expanded layout shows Chat,
-  Preview, History & Results and Source in a filled two-column, two-row grid.
-- Layout persistence remains in `lattices.editor.layout.v3`. The preset applies
-  once; later user layouts take precedence. Old saved data and other kit
-  consumers remain untouched.
-- At a panel-host width of 640px or less, CSS stacks panels in one scrolling
-  column and hides resize separators. Preview comes first at a minimum of
-  62vh, followed by a compact context strip, then Source when visible. History
-  and Terminal follow. Chat's header, empty-state copy, Context label, examples
-  and composer input/send are hidden; selected context items remain removable.
-  This responsive presentation does not rewrite the saved wide layout.
+- Overview has a 212px scrolling index and an independently scrolling main
+  region. The centered reading wrapper is at most 900px including 40px side
+  padding, leaving an 820px content measure. Windows and Matched by form a
+  two-column summary above the Preview actions and panel shortcuts.
+- The layer composer sits at the bottom when content fits. Longer content
+  scrolls normally; no content is clipped to preserve the composition.
+- At widths of 640px or less, including the 560px Overview Narrow target, the
+  index becomes a compact layer picker. Content uses 24px side padding, the
+  summary becomes one column and Matched by is hidden. Source remains
+  reachable from Show source. Actions and the chat heading can wrap.
+- Overview and Workspace stay mounted and switch through `hidden`. The
+  CodeMirror instance, panel mounts, current context and saved layout survive
+  view changes. View choice is persisted per subject in
+  `lattices.editor.view.v1:<subjectId>`; unavailable storage leaves the session
+  usable. Panel layout remains separately persisted in
+  `lattices.editor.layout.v3`.
+- With `chrome: 'host'`, native Lattices owns page-level view/layout controls;
+  the web subject header, peer arrangement toolbar and bottom status are absent.
+  Standalone retains its subject header and Overview/Workspace switch.
+  Its 28px status bar appears only in Workspace.
+- Workspace starts with Chat/Preview at 38:62. Expanded layout is the
+  Chat/Preview/History & Results/Source two-by-two grid. Existing user layouts
+  take precedence. Panel headers are 36px with 16px side padding.
+- Workspace's separate 640px container breakpoint keeps Preview at least 62vh,
+  then a removable-context strip, visible Source and remaining panels. It hides
+  resize separators, Chat chrome/examples and composer input/send without
+  rewriting saved wide layouts.
 
 ## Elevation & Depth
 
-Panels are flat, with half-pixel preset header rules and no focused-panel
-shadow. Selected rows use a subtle accent fill and border. The disabled
-composer alone has a restrained inset highlight and soft shadow. Do not animate
-data refreshes or replace mounted panels and Source editors. Reduced-motion
-preferences disable transitions.
+Overview uses tonal separation and fine rules, not raised cards for every
+section. Buttons use a restrained gradient and inset highlight; the composer
+has a subtle inset highlight and soft shadow. Workspace panels remain flat
+with no focused-panel shadow. `.lv` uses 1px panel and row rules rather than
+the older half-pixel presentation. Refresh and view changes do not animate or
+replace the source surface. Reduced-motion preferences disable transitions.
 
 ## Shapes
 
-Preview rows use 6px corners, app-initial tiles 5px, count pills 4px, example
-rows 7px and the composer shell 10px. Panels remain square. Layer markers are
-small rounded squares; selection metadata uses a dot. These are preset
-adaptations of actual kit components, not replacement component implementations.
+The index selection, action buttons and Workspace rows use 6px corners; the
+composer uses 10px. Overview layer indicators are 7px circles, filled green
+only when that group has open windows. Workspace app-initial tiles remain
+neutral and compact. Preserve actual Hudson components where used rather than
+building replacement composer, panel or source systems.
 
 ## Components
 
-- **Host synchronization:** validated, subject-matched `ui.command` events in
-  host mode control arrangement (`single`, `columns`, `rows`, `grid`), toggle
-  Chat/Preview/History/Source or toggle Source directly. Grid uses two columns.
-  Commands received before the panel controller is ready are queued, bounded
-  to 32. `ui.state` reports arrangement, visible panels and `sourceOpen` when
-  the controller mounts and whenever layout changes. Reports are serialized.
-  A sync failure shows “Layout controls could not sync.” with Retry; it does
-  not imply a configuration write. Standalone mode does not report host UI state.
-- **Panel controls:** generic panel Actions menus are hidden. Reorder handles
-  and the existing layout controller remain. Standalone Panels includes all
-  five panels, including Terminal. Host `togglePanel` does not expose Terminal.
-- **Preview header:** total window count, selected count with an accent dot,
-  Clear and an amber Duplicates label. The duplicate tooltip gives the matched
-  Source-entry count. These are panel-local metadata, not a host-mode global
-  status bar.
-- **Preview list:** actual `HudGroupedList` and `HudListItem` components form a
-  keyboard-operable multiselect listbox. Rows are 34px tall, single-line, with
-  18px app-initial tiles, ellipsized titles, rounded-UI secondary app names and
-  a checkmark for selected windows. Sticky group headers carry kit count
-  badges. Empty groups occupy one line. Unassigned is last and separated.
-  Click or Enter/Space selects; Cmd/Ctrl adds or removes a selection. Arrows
-  and Home/End move the active row.
-- **Chat:** the empty state says “Make room for your work.” and explains that
-  an agent arrives in a later version. Three Try examples are display-only.
-  `createAgentComposer` owns removable selected-window `contextItems`, mounted
-  in the top slot through its leading-tools element. The disabled input/send
-  stays at the bottom on wide layouts. Context removal remains enabled.
-  The placeholder says “Ask about these windows… (agent arrives in a later
-  version)”; submission cannot occur.
-- **Source header:** `workspace.json` and the first selected range's line span
-  appear in the panel metadata slot. The document remains the layers subset;
-  there is no separate repeated filename strip inside the content.
-- **Source editor:** `CodeViewer` uses opt-in read-only UTF-16 range selection
-  backed by a stable CodeMirror instance. Existing non-range consumers retain
-  their behavior. Source and Preview selection follow each other with nearest,
-  instant scrolling to the first match. All duplicate ranges remain highlighted;
-  ambiguity changes their presentation to amber. Clear and context removal
-  update shared selection without replacing the editor or panel mounts.
-- **History & Results:** session-local external configuration changes, newest
-  first, with relative times, absolute-time tooltips and shortened revisions
-  with full-value tooltips. The empty line explains that changes made elsewhere
-  appear here.
-- **Terminal:** an unavailable placeholder with no connection or execution,
-  even when revealed in standalone Panels.
-- **Host states:** an unavailable bridge requests a Lattices update. Initial
-  subject-read failure shows “Can't read workspace layers” and Retry. Later
-  read failures retain the last consistent view with an amber notice and Retry.
-  Loading, layout-save failure and host UI-sync failure have distinct copy.
-- **Mock controls:** synthetic-host controls require a non-production build
-  and the `mock` query parameter. They are not production shell controls.
+### Overview
+
+- **Index and picker:** enumerate actual groups. The layer total excludes
+  Unassigned; Unassigned is separated below the layer list. Row numbers count
+  open projection rows, with an em dash for zero in the wide index. The footer
+  identifies `workspace.json` and elapsed time since the successful read.
+- **Layer facts:** use `overviewFacts` from `overview-data.ts`. Window counts
+  are the group's actual rows. Rule counts sum each entry's Source-range
+  occurrences, including duplicate entries, rather than counting deduplicated
+  keys. Unmatched rule counts use the same occurrence rule. Open matches come
+  from each row's `entryKeys`.
+- **Optional facts:** pinned counts appear only when canonical content has an
+  explicit `pins` array, and count pins per occurrence. Displays appear only
+  for explicit string or number `display` fields. Never infer either from
+  group names or window totals.
+- **Windows and Matched by:** show actual titles/apps and canonical match
+  fields (`app`, `title`, `url`, `path`, `group`) when available. Duplicate
+  occurrences are explicit. Do not turn these configuration conditions into
+  an invented explanation of the resolver's winning rule.
+- **Preview actions:** Preview layout opens Workspace Preview and selects that
+  layer's windows. Show source and View in Source open Workspace Source and
+  select the layer's entry keys, preserving all ranges, including unmatched
+  rules. The Add to this page buttons also open Workspace panels; they do not
+  create configuration or new Overview content. Open Workspace preserves the
+  saved panel arrangement.
+- **No thumbnail:** the bridge provides no frame geometry. Explain inspection
+  in text; do not fabricate a spatial layout preview, screenshot or placement.
+- **Layer composer:** the real `createAgentComposer` shows one layer context
+  item with its actual window count. Input/send and the context item are
+  disabled. “Answers arrive in a later version” states the limitation. No
+  agent request is sent.
+- **Empty groups:** no windows is a factual state; rules can still exist and
+  Source remains useful. An entirely empty projection shows “No layers
+  configured” with Open Workspace.
+
+### Workspace and host integration
+
+- **UI synchronization:** subject-matched, validated `ui.command` supports
+  `view` (`overview`/`workspace`), arrangement, supported panel toggles and
+  `toggleSource`. View updates are handled in the model. Serialized `ui.state`
+  reports include current view, arrangement, supported visible panels and
+  `sourceOpen`. View changes do not alter panel geometry. Terminal is excluded
+  from host state and hidden in host mode; standalone retains its unavailable
+  placeholder.
+- **Preview:** `HudGroupedList`/`HudListItem` retain 34px rows, sticky group
+  headers, count badges, keyboard multiselect, selected checkmarks and neutral
+  app initials. Preview header slots show total/selected counts, Clear and
+  amber duplicate feedback. Source header slots show filename and line span.
+- **Selection:** opt-in UTF-16 `CodeViewer` ranges retain all duplicate matches.
+  Preview and Source follow selection with nearest instant scrolling. Clear
+  and removable Workspace context items update shared state without remounts.
+- **Chat:** “Arrange your windows” introduces selection context and the future
+  agent. Examples are display-only; input/send stays disabled while selected
+  window context remains removable. This differs from Overview's fixed,
+  disabled layer context.
+- **History:** external configuration changes remain session-local,
+  newest-first, with relative times, absolute tooltips and shortened revisions.
+- **Failures:** initial read failure offers Retry; later failure preserves the
+  last consistent view. Unsupported hosts request an update. Loading, layout
+  persistence failure and host UI-sync failure have distinct notices. Retrying
+  UI synchronization does not write workspace configuration.
+- **Mock controls:** synthetic host controls remain development-only and
+  require the `mock` query parameter.
 
 ## Do's and Don'ts
 
-- Do use the Lattices preset in `theme.css`, with layout in `editor.css`.
-- Do retain actual kit components, stable mounts and read-only semantics.
-- Do respect host chrome capability and retain the standalone fallback.
-- Do keep Preview counts and Source metadata in panel header slots.
-- Do use amber for ambiguity and failures, including ambiguous Source ranges.
-- Don't invent host layer colors or resolver match reasons.
-- Don't restore the previous 30px rows or monospace secondary app names.
-- Don't duplicate native page chrome in host mode.
-- Don't reset saved wide layouts for the narrow view.
-- Don't add purple, decorative motion, editing, message submission or terminal
-  execution.
-- Don't claim the internal contact sheet verifies the inaccessible canvas.
-
-## Read-only flow pass: A–H
-
-The v7 Layers pass preserves the behavior below while superseding the earlier
-Hudson-default styling and global chrome placement.
-
-- **A · Chrome:** capability-gated native ownership; standalone header, peer
-  toolbar and bottom status remain as a fallback. Kit panel headers carry
-  local metadata.
-- **B · Labels:** one label per purpose. Source identifies workspace.json in
-  its header; the content is still the layers subset. Panel Actions menus stay
-  hidden without removing reorder or supported visibility controls.
-- **C · Context:** removable app/title context, future-agent guidance, three
-  display-only examples and an honestly disabled composer. No writes implied.
-- **D · Preview:** dense 34px kit rows, neutral initial tiles, sticky group
-  headings and count badges. Empty groups stay compact; Unassigned is last.
-  No invented winning-match reason or per-layer color data.
-- **E · Follow selection:** nearest instant scrolling both ways, all duplicate
-  ranges preserved, amber ambiguity and explicit duplicate-count feedback.
-  Panel nodes and CodeMirror survive layout and refresh changes.
-- **F · Narrow:** Preview at least 62vh, context strip, then visible Source and
-  remaining panels. CSS only; wide saves unchanged.
-- **G · History:** one useful empty line, newest-first relative times with
-  absolute tooltips and short revisions.
-- **H · Copy:** concrete window/configuration language and explicit unavailable
-  capabilities. Native Lattices preset; no decorative motion.
+- Do treat Overview as the default and Workspace as the persistent inspector.
+- Do use the exact `.lv` palette, SF Pro Text hierarchy and local display/data
+  fonts rather than the superseded rounded-UI styling.
+- Do derive counts and context from the projection, including duplicate rules.
+- Do preserve keyboard selection, range ambiguity, stable mounts and saves.
+- Do keep capability-gated chrome and unavailable functions explicit.
+- Don't invent frames, thumbnails, pins, displays, layer colors or match reasons.
+- Don't imply that Preview moves windows, shortcuts edit configuration, Chat
+  sends messages, Source edits files or Terminal runs commands.
+- Don't add purple or decorative motion.
+- Don't claim that local screenshots match the inaccessible remote canvas.
