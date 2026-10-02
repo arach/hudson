@@ -28,7 +28,7 @@ export function createReadOnlyCodeSurface(host: HTMLElement, options: {
     EditorView.contentAttributes.of({ tabindex: '0', 'aria-label': 'Read-only source', 'aria-readonly': 'true' }),
     lineNumbers(), drawSelection(), keymap.of(defaultKeymap), json(),
     syntaxHighlighting(hudsonHighlightStyle), hudsonEditorTheme, highlights,
-    EditorView.theme({ '.hk-code-selection': { backgroundColor: '#164e63', color: '#ecfeff' } }),
+    EditorView.theme({ '.hk-code-selection': { backgroundColor: 'var(--hud-accent-soft)', color: 'var(--hud-ink)' } }),
     EditorView.updateListener.of(update => {
       if (!applying && update.selectionSet) options.onSelect?.(update.state.selection.ranges.map(r => ({ from: r.from, to: r.to })));
     }),

@@ -18,6 +18,9 @@ export interface HudGroupedListGroup<Item> {
 }
 
 export interface HudGroupedListProps<Item> {
+  renderItem?: (item: Item) => React.ReactNode;
+  groupClassName?: (group: HudGroupedListGroup<Item>) => string;
+  stickyHeaders?: boolean;
   groups: readonly HudGroupedListGroup<Item>[];
   itemKey: (item: Item) => string;
   selectedKey?: string | null;
@@ -36,6 +39,7 @@ export interface HudGroupedListProps<Item> {
 
 export function HudGroupedList<Item>({
   groups,
+  renderItem, groupClassName, stickyHeaders,
   itemKey,
   selectedKey,
   onSelect,
@@ -59,9 +63,10 @@ export function HudGroupedList<Item>({
   return (
     <div className={cx('flex flex-col', density === 'compact' ? 'gap-2' : 'gap-3', className)}>
       {groups.map(group => (
-        <section key={group.id} className="min-w-0">
+        <section key={group.id} role="group" aria-label={typeof group.title === 'string' ? group.title : undefined} className={cx("min-w-0", groupClassName?.(group))}>
           <div className={cx(
             'flex items-center gap-2 px-3 font-mono uppercase text-muted-foreground',
+            stickyHeaders && group.items.length > 0 && 'sticky top-0 z-10 bg-secondary py-1',
             density === 'compact' ? 'pb-1 text-[9px] tracking-[0.14em]' : 'pb-1.5 text-[10px] tracking-[0.16em]',
           )}>
             <span className="min-w-0 truncate">{group.title}</span>
@@ -87,6 +92,7 @@ export function HudGroupedList<Item>({
             <div className="flex flex-col">
               {group.items.map(item => {
                 const key = itemKey(item);
+                if (renderItem) return <React.Fragment key={key}>{renderItem(item)}</React.Fragment>;
                 const badge = renderBadge?.(item);
                 const trailing = renderTrailing?.(item);
                 return (
