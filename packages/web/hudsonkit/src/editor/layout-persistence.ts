@@ -22,8 +22,8 @@ export function parsePanelLayout(text: string | null): PanelLayoutEnvelope | nul
       focusedPanelId: l.focusedPanelId, gridColumns: l.gridColumns, columnSizes: l.columnSizes, rowSizes: l.rowSizes }, bindings: value.bindings };
   } catch { return null; }
 }
-export function createPanelLayoutPersistence(storage: LayoutStorage | undefined, subjectId: string, preset: Layout, bindings: Record<string, string>) {
-  const key = `hudson.editor.layout.v1:${encodeURIComponent(subjectId)}`;
+export function createPanelLayoutPersistence(storage: LayoutStorage | undefined, subjectId: string, preset: Layout, bindings: Record<string, string>, namespace = 'hudson.editor.layout.v1') {
+  const key = `${namespace}:${encodeURIComponent(subjectId)}`;
   let wide: Layout = structuredClone(preset);
   try {
     const saved = parsePanelLayout(storage?.getItem(key) ?? null);
