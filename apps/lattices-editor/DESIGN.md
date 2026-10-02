@@ -37,9 +37,11 @@ with line numbers and syntax highlighting.
 
 ## Layout
 
-- First open shows Chat and Preview at 38:62. Saved layouts take precedence.
-- Expanded layout shows Chat, Preview, History & Results and Source in a
-  three-column, two-row grid. Terminal remains hidden.
+- First open and Expanded layout show Chat, Preview, History & Results and
+  Source in a filled two-column, two-row grid. Terminal remains hidden.
+- The app uses the lattices.editor.layout.v2 storage namespace to apply this
+  preset once in place of old layouts. Subsequent user layouts take precedence;
+  the old namespace and other kit consumers remain untouched.
 - The Panels picker includes all five panels, including Terminal. Preserve
   the shell's Single, Columns, Rows and Grid layouts, focus, visibility,
   reorder and resize controls.

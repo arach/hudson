@@ -56,7 +56,7 @@ function Content() {
     let storage: Storage | undefined;
     try { storage = globalThis.localStorage; } catch { /* Report on save. */ }
     return createEditorLayoutPersistence(storage, id);
-  }, [id, panels]);
+  }, [id]);
   if (data.status === 'unavailable') return <main className="fallback"><h1>Editor unavailable in this Lattices version</h1><p>Update Lattices to a version with the read-only Editor bridge.</p></main>;
   if (!persistence) return <main className="fallback"><h1>{data.status === 'error' ? "Can't read workspace layers" : 'Loading Workspace Layers…'}</h1>{data.error && <><p role="alert">{data.error}</p><button onClick={() => void model.retry()}>Retry</button></>}</main>;
   return <main className="editor-root">
