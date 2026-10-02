@@ -74,3 +74,11 @@ body { margin: 0; }
 }
 
 .context-panel { overflow: auto; }
+/* Keep the complete composer visible in short grid panels. */
+.context-panel { overflow:hidden; gap:12px; }
+.context-scroll { flex:1; min-height:0; overflow:auto; display:flex; flex-direction:column; gap:20px; overscroll-behavior:contain; }
+.context-scroll > * { flex:none; }
+.context-panel > .composer-host { flex:none; margin-top:0; }
+@container (max-width:640px) {
+  .context-scroll { flex:none; overflow:visible; gap:0; }
+}

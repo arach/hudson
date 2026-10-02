@@ -40,3 +40,11 @@ Existing Workspace/States captures were refreshed with the v8 font, palette and 
 No spatial thumbnail is drawn: the native projection contract supplies no frames.
 Reference v8 canvas inaccessible; inspected against the written brief and Talkie's
 local workflow-detail.ts/style.css, not against unseen reference pixels.
+
+## Short-height composer regression
+
+`overview-pinned-1280x650.png`, `overview-pinned-1280x820.png` and
+`overview-pinned-560x650.png` verify the always-visible, non-overlapping chat.
+`workspace-chat-290.png` and `workspace-chat-290-scrolled.png` show the same
+roughly 290px Chat panel before/after scrolling its Try/context region.
+Run `bun apps/lattices-editor/short-height-check.ts` after the development build.

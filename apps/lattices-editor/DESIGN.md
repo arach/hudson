@@ -199,3 +199,11 @@ building replacement composer, panel or source systems.
   sends messages, Source edits files or Terminal runs commands.
 - Don't add purple or decorative motion.
 - Don't claim that local screenshots match the inaccessible remote canvas.
+
+## Short host heights
+
+Overview reserves a non-shrinking bottom chat block with a soft 1px divider.
+Only the reading content above it scrolls; the picker remains outside that
+scroll region. Workspace Chat similarly reserves the full composer and scrolls
+its context/intro/Try region instead. Panel and CodeViewer mounts are unchanged.
+Verified at 1280×650, 1280×820 and 560×650, plus a roughly 290px grid Chat.

@@ -119,3 +119,10 @@
 .lv .preview-group > div:first-child > .flex-1 { height:1px; }
 .lv .notice { border-bottom-width:1px; }
 .lv .header-actions button, .lv .hk-agent-workspace__arrangement-button { background:linear-gradient(var(--raise),var(--card)); box-shadow:inset 0 1px 0 rgb(255 255 255 / .04); }
+/* Bound the reading region, not the composer, to the available host height. */
+.overview-main { display:flex; flex-direction:column; overflow:hidden; }
+.layer-picker { flex:none; }
+.layer-reading { flex:1; width:100%; min-height:0; margin:0 auto; overflow:hidden; }
+.overview-content { flex:0 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain; }
+.overview-chat { flex:none; border-top:1px solid var(--line-soft); padding-top:12px; }
+.overview-spacer { flex:1 0 16px; }

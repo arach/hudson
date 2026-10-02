@@ -96,15 +96,19 @@ Search remains native-owned: no search/filter bridge command was specified.
 This bundle does not create the native app page or chrome; native integration is
 separate. No push, merge or PR.
 
+## Short-height checks
+
+Overview keeps the composer visible at 1280×650, 1280×820 and 560×650; only the reading content scrolls. Workspace keeps its full input visible in a 290px Chat panel while context and Try content scroll independently. Browser regression checks and refreshed screenshots cover both. Build, typecheck, lint and all 34 unit tests pass.
+
 ## SHA-256
 
 ```text
-8048ac209bec741e1c29cd0cfac5aac1c0c2ba8c3ddbd4a58fa9bd92ef5c63c2  cormorant-garamond-latin-400-normal.woff2
 732f37009943e7f4378cf37113c9bcc4716af002a8583511aa91ed5d37683e73  cormorant-garamond-LICENSE.txt
-70b937d3949658ff8a41040870cf84a3f516148a2e279b7b2d28d9eced7d26a2  editor.css
-d7b8d0c20fc16ff156cb45e673c62a784f11baa93e91903e9a9f7918457856aa  editor.js
+8048ac209bec741e1c29cd0cfac5aac1c0c2ba8c3ddbd4a58fa9bd92ef5c63c2  cormorant-garamond-latin-400-normal.woff2
+1d35f5aa3b6f3cae5415a18a8e219b01bfbe117a4d26591f943a8bd09426c449  editor.css
+55572e7e240ed22f96b6a052f79138bd0d9ac81987da82d597de939f1ce0f00e  editor.js
 6ceb52eedcfc21964230e4e1793d4e9703b7d76393b8a3808229b6c30c19c208  index.html
+403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b  jetbrains-mono-LICENSE.txt
 14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  jetbrains-mono-latin-400-normal.woff2
 400c6bfda18d5d14acad1c15d6dcb9f8e13c015e7286317e0b9a482539bef147  jetbrains-mono-latin-600-normal.woff2
-403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b  jetbrains-mono-LICENSE.txt
 ```
