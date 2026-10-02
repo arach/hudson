@@ -74,7 +74,7 @@ h2 { font-size: 12px; font-weight: 650; }
   .hk-agent-workspace__peer-body { display: flex !important; flex-direction: column; overflow: auto; }
   .hk-agent-workspace__peer-panel { flex: 0 0 45vh; min-height: 260px; order: 2; }
   .hk-agent-workspace__peer-panel[hidden] { display: none; }
-  .hk-agent-workspace__peer-panel[data-panel-id=preview] { order: 0; flex-basis: 60vh; min-height: 60vh; }
+  .hk-agent-workspace__peer-panel[data-panel-id=preview] { order: 0; flex: 1 0 60vh; min-height: 60vh; }
   .hk-agent-workspace__peer-panel[data-panel-id=chat] { order: 1; flex: 0 0 auto; min-height: 0; }
   [data-panel-id=chat] .hk-agent-workspace__peer-panel-content { flex: 0 0 auto; }
   .context-panel { height: auto; padding: 12px; }

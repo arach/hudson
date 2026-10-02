@@ -451,6 +451,7 @@ export function createAgentPanelLayout(
     }
     visibilityItems.replaceChildren();
 
+    let frameIndex = 0;
     for (const id of orderedIds()) {
       const panel = panelById(id)!;
       const frame = frames.get(id) ?? createFrame(id);
@@ -467,7 +468,10 @@ export function createAgentPanelLayout(
       }
       actionButtons.forEach((button) => { button.disabled = Boolean(panel.disabled); });
       frame.hidden = !shown.includes(id);
-      body.append(frame);
+      // Do not detach stable mounts just to render focus/size/visibility changes.
+      // Reparenting a code surface can discard its scroll position.
+      if (body.children[frameIndex] !== frame) body.insertBefore(frame, body.children[frameIndex] ?? null);
+      frameIndex += 1;
 
       const visibility = element('button', 'hk-agent-workspace__panel-visibility-item');
       const isVisible = !state.hiddenPanelIds.includes(id);

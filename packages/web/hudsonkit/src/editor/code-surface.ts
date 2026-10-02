@@ -1,4 +1,4 @@
-import { EditorState, StateEffect, StateField } from '@codemirror/state';
+import { EditorSelection, EditorState, StateEffect, StateField } from '@codemirror/state';
 import { Decoration, EditorView, drawSelection, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap } from '@codemirror/commands';
 import { json } from '@codemirror/lang-json';
@@ -35,7 +35,7 @@ export function createReadOnlyCodeSurface(host: HTMLElement, options: {
   ] }) });
   const reveal = () => {
     if (revealRange && host.getBoundingClientRect().height > 0) {
-      view.dispatch({ effects: EditorView.scrollIntoView(revealRange.from, { y: 'nearest', x: 'nearest' }) });
+      view.dispatch({ effects: EditorView.scrollIntoView(EditorSelection.range(revealRange.from, revealRange.to), { y: 'nearest', x: 'nearest' }) });
     }
   };
   // Hidden panel mounts keep their editor. Reveal the current range when shown.
@@ -45,14 +45,25 @@ export function createReadOnlyCodeSurface(host: HTMLElement, options: {
     setText(text: string) {
       if (view.state.doc.toString() === text) return;
       applying = true;
-      try { view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, effects: setHighlights.of([]) }); }
+      try {
+        const previous = view.state.selection.main;
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: text },
+          selection: { anchor: Math.min(previous.anchor, text.length), head: Math.min(previous.head, text.length) },
+          effects: setHighlights.of([]),
+        });
+      }
       finally { applying = false; }
     },
     highlight(ranges: readonly SourceRange[], options: { scroll?: boolean } = {}) {
       const valid = ranges.filter(r => Number.isInteger(r.from) && Number.isInteger(r.to) && r.from >= 0 && r.to <= view.state.doc.length && r.from <= r.to);
-      revealRange = options.scroll === false ? undefined : valid[0];
+      // A source-origin highlight should not jump to the first duplicate.
+      // Retain the actual cursor/range for a later resize or panel reveal.
+      revealRange = options.scroll === false
+        ? { from: view.state.selection.main.from, to: view.state.selection.main.to }
+        : valid[0];
       view.dispatch({ effects: setHighlights.of(valid) });
-      reveal();
+      if (options.scroll !== false) reveal();
     },
     destroy: () => { observer?.disconnect(); view.destroy(); },
   };
