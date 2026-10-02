@@ -8,6 +8,12 @@ colors:
   border: "#2c3c43"
   accent: "#67e8f9"
   selected-row: "#164e63"
+  surface-band: "#142128"
+  hover: "#172a33"
+  chip: "#18333e"
+  glyph-slate: "#263b46"
+  glyph-blue: "#203e56"
+  glyph-teal: "#1d4547"
 typography:
   body:
     fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif"
@@ -94,3 +100,33 @@ the disabled Chat field 6px. Panel divisions remain straight and compact.
 - Don't reset saved wide layouts to implement narrow-screen stacking.
 - Don't imply that Chat sends messages, Source edits files or Terminal runs
   commands.
+
+## Read-only flow pass — before → after (A–H)
+
+- **A · Chrome:** four stacked chrome rows → one compact subject/selection/action
+  header, a 28px kit layout toolbar, and compact panel headers. No new shell fork.
+- **B · Labels:** repeated Chat/Read only/Actions → one label per purpose;
+  Source identifies workspace.json's layers subset. Generic opt-in panel action
+  visibility defaults to today's kit behavior; this app hides those menus.
+  Reorder remains available on panel handles and visibility in Panels.
+- **C · Context:** empty Chat and dead box → removable app/title selection chips,
+  a selection hint, three plainly labelled future examples, and an honestly
+  disabled composer. No agent functionality or writes implied.
+- **D · Preview:** loose two-line rows → 30px single-line rows, deterministic
+  blue/teal/slate initial glyphs, sticky surface-band headers and count badges.
+  Empty groups collapse to one line; Unassigned is last and separated. No
+  invented match reason: entry canonical content describes configuration but
+  does not reliably identify the resolver's per-row winning reason.
+- **E · Follow selection:** highlights alone → nearest instant scrolling in both
+  directions, all duplicate ranges preserved, explicit duplicate-count summary.
+  Panel nodes and CodeMirror remain mounted through layout and refresh changes.
+- **F · Narrow:** equal-height stack → Preview first at least 60vh, compact
+  chips-only Chat next, then other visible panels. CSS only; wide saves unchanged.
+- **G · History:** verbose empty state and hashes → one useful empty line,
+  newest-first relative timestamps with absolute tooltips and short revisions.
+- **H · Copy:** implementation terms → concrete window/configuration language.
+  Dark Hudson surfaces and cyan selection/focus remain; no decorative motion.
+
+Additional tokens: surface-band #142128, hover #172a33, chip #18333e;
+glyph slate #263b46, blue #203e56, teal #1d4547. These are quiet content
+grouping surfaces, not new accent colors.
