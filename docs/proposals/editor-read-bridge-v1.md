@@ -104,3 +104,33 @@ may invalidate at the last good revision. Recovery with unchanged content must
 also invalidate. A successful read and preview.project still require a non-null
 revision. “Editor unavailable in this Lattices version” is reserved for a missing
 handler or required capability, not an unreadable document.
+
+## Layers page / native chrome extension (v7)
+
+The `capabilities.result` payload may include `chrome: "host"`. Omission keeps
+standalone chrome. Host mode suppresses the web page header, status bar and
+peer arrangement/visibility toolbar; panel headers remain. `chrome: "host"`
+also advertises support for these two UI-only operations. Neither changes the
+workspace configuration, membership or desktop state.
+
+- **`ui.command` event (host → web):** normal v1 event envelope, `requestId: null`,
+  `subjectId` equal to the discovered subject and `revision: null` (not a config
+  operation). Payload is one of:
+  `{ "command": "arrangement", "value": "single"|"columns"|"rows"|"grid" }`,
+  `{ "command": "togglePanel", "value": "chat"|"preview"|"history"|"source" }`,
+  or `{ "command": "toggleSource" }`. Unknown commands/values and other subject
+  IDs are ignored. Commands received after discovery but before panel mounting
+  are queued in order (bounded to the most recent 32). Grid uses two columns.
+- **`ui.state` request (web → host):** normal correlated v1 request, current
+  subject ID, `revision: null`; payload `{ arrangement, panels: string[],
+  sourceOpen: boolean }`. `panels` lists enabled (not hidden) panel IDs in saved
+  order, including all enabled IDs when arrangement is `single`. `sourceOpen`
+  means Source is enabled. Sent on initial mounting/restoration and every layout
+  change, including host commands, focus and resize. Requests are serialized.
+  Native replies `ui.state.result` with the same request ID and subject ID,
+  `revision: null`, `payload: {}`. Errors/timeouts show a recoverable layout-sync
+  notice without invalidating configuration data. No `ui.state` is sent in
+  standalone mode. The native host must not echo `ui.state` back as a command.
+
+Native Search is outside this extension; no search/filter command is defined.
+Narrow presentation never changes persisted wide layout or `ui.state` ordering.

@@ -1,11 +1,13 @@
+import { isUICommand, type UICommand, type layoutState } from './ui';
 import { createRevisionGuard, HostBridgeError, type HostBridge, type HostEnvelope } from '../../packages/web/hudsonkit/src/editor/host-bridge';
 import { createSubjectStore, type EditorSubject, type EditorSelection, type SourceRange } from '../../packages/web/hudsonkit/src/editor/subject-store';
 export interface Entry { key: string; layerId: string; canonical: string; ranges: SourceRange[]; ambiguous: boolean }
 export interface PreviewRow { id: string; windowId: number; app: string; title: string; layerId: string | null; entryKeys: string[] }
 export interface Projection { snapshotId: string; groups: { id: string; label: string; rows: PreviewRow[] }[]; entries: Entry[] }
 interface SubjectRead { subject: EditorSubject; source: { text: string; language: 'json' } }
-interface Capabilities { readOnly: boolean; methods: string[]; subject: Omit<EditorSubject, 'revision'> & { revision: string | null }; terminal: boolean }
+interface Capabilities { chrome?: 'host'; readOnly: boolean; methods: string[]; subject: Omit<EditorSubject, 'revision'> & { revision: string | null }; terminal: boolean }
 export interface EditorState {
+  chrome: 'host' | 'standalone'; uiError: string | null;
   status: 'loading' | 'ready' | 'unavailable' | 'error'; error: string | null;
   document: SubjectRead | null; projection: Projection | null;
   history: { revision: string; at: string }[];
@@ -62,7 +64,10 @@ export function selectionForRanges(projection: Projection, ranges: SourceRange[]
 }
 export function createEditorModel(bridge: HostBridge) {
   const selection = createSubjectStore();
-  let state: EditorState = { status: 'loading', error: null, document: null, projection: null, history: [] };
+  let state: EditorState = { chrome: 'standalone', uiError: null, status: 'loading', error: null, document: null, projection: null, history: [] };
+  const uiListeners = new Set<(command: UICommand) => void>();
+  const uiQueue: UICommand[] = [];
+  let uiSend = Promise.resolve();
   const listeners = new Set<() => void>();
   const guard = createRevisionGuard();
   let subjectId: string | null = null, disposed = false, refreshing = false, pending = false;
@@ -102,6 +107,12 @@ export function createEditorModel(bridge: HostBridge) {
     } finally { refreshing = false; }
   }
   function receive(event: HostEnvelope) {
+    if (event.kind === 'ui.command') {
+      if (state.chrome !== 'host' || event.subjectId !== subjectId || !isUICommand(event.payload)) return;
+      if (uiListeners.size) uiListeners.forEach(fn => fn(event.payload as UICommand));
+      else { uiQueue.push(event.payload); if (uiQueue.length > 32) uiQueue.shift(); }
+      return;
+    }
     if (event.subjectId !== subjectId || !['config.changed', 'windows.changed'].includes(event.kind) ) return;
     const p = event.payload;
     if (!record(p) || typeof p.at !== 'string' || !Number.isFinite(Date.parse(p.at)) || typeof p.subscriptionId !== 'string') return;
@@ -118,6 +129,7 @@ export function createEditorModel(bridge: HostBridge) {
           !['subject.read', 'preview.project', 'events.subscribe'].every(m => c.methods.includes(m)) ||
           capabilities.subjectId !== c.subject.id || capabilities.revision !== c.subject.revision) throw new HostBridgeError('unsupported', 'Required editor capability missing');
         subjectId = c.subject.id;
+        emit({ chrome: c.chrome === 'host' ? 'host' : 'standalone' });
         await bridge.request('events.subscribe', subjectId, null);
         if (disposed) return;
         subscribed = true;
@@ -128,6 +140,19 @@ export function createEditorModel(bridge: HostBridge) {
     }
   return {
     selection,
+    subscribeUI(listener: (command: UICommand) => void) {
+      uiListeners.add(listener); uiQueue.splice(0).forEach(listener);
+      return () => { uiListeners.delete(listener); };
+    },
+    reportLayout(payload: ReturnType<typeof layoutState>) {
+      if (state.chrome !== 'host' || disposed) return Promise.resolve();
+      uiSend = uiSend.then(async () => {
+        if (disposed) return;
+        try { await bridge.request('ui.state', subjectId, null, payload); emit({ uiError: null }); }
+        catch (error) { if (!disposed) emit({ uiError: error instanceof Error ? error.message : 'Could not sync layout' }); }
+      });
+      return uiSend;
+    },
     getSnapshot: () => state,
     subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     start,
@@ -139,7 +164,7 @@ export function createEditorModel(bridge: HostBridge) {
       selection.select(selectionForKeys(state.projection, keys, 'preview', ids));
     },
     selectRanges(ranges: SourceRange[]) { if (state.projection) selection.select(selectionForRanges(state.projection, ranges)); },
-    dispose() { disposed = true; guard.invalidate(); unsubscribe(); bridge.dispose(); listeners.clear(); },
+    dispose() { disposed = true; guard.invalidate(); unsubscribe(); bridge.dispose(); listeners.clear(); uiListeners.clear(); uiQueue.length = 0; },
   };
 }
 export type EditorModel = ReturnType<typeof createEditorModel>;

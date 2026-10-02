@@ -1,9 +1,10 @@
 import type { HostEnvelope, HostTransport } from '../../packages/web/hudsonkit/src/editor/host-bridge';
 /** Synthetic development fixture. No membership resolver or production fallback. */
-export function createMockTransport(options: { rich?: boolean } = {}) {
-  let version = 1, inventory = 1, unreadable = false, staleOnce = false;
+export function createMockTransport(options: { rich?: boolean; chrome?: 'host'; unreadable?: boolean } = {}) {
+  let version = 1, inventory = 1, unreadable = options.unreadable ?? false, staleOnce = false;
   const listeners = new Set<(event: unknown) => void>();
   const calls: string[] = [];
+  const uiStates: unknown[] = [];
   const id = 'workspace-layers';
   const revision = () => `mock:${version}`;
   const subject = () => ({ id, kind: 'lattices.workspace-layers', label: 'Workspace Layers', revision: unreadable ? null : revision() });
@@ -55,7 +56,8 @@ export function createMockTransport(options: { rich?: boolean } = {}) {
       });
       const error = (code: string, message: string) => result({ code, message }, 'error');
       switch (message.kind) {
-        case 'capabilities': return result({ readOnly: true, methods: ['subject.read', 'preview.project', 'events.subscribe'], subject: subject(), terminal: false });
+        case 'ui.state': uiStates.push(message.payload); return { ...result({}), revision: null };
+        case 'capabilities': return result({ chrome: options.chrome, readOnly: true, methods: ['subject.read', 'preview.project', 'events.subscribe'], subject: subject(), terminal: false });
         case 'events.subscribe': return result({ subscriptionId: 'mock:subscription' });
         case 'subject.read': return unreadable ? error('unavailable', 'Synthetic workspace JSON is invalid.') : result({ subject: subject(), source: { text: fixture().text, language: 'json' } });
         case 'preview.project':
@@ -66,7 +68,8 @@ export function createMockTransport(options: { rich?: boolean } = {}) {
       }
     },
   };
-  return { transport, calls, fixture, emit,
+  return { transport, calls, fixture, emit, uiStates,
+    command(payload: unknown) { listeners.forEach(fn => fn({ v:1, requestId:null, subjectId:id, revision:null, kind:"ui.command", payload })); },
     change() { version++; emit(); },
     inventory() { inventory++; emit('windows.changed'); },
     invalid() { unreadable = true; emit(); },
