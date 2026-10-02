@@ -110,11 +110,7 @@ export function createEditorModel(bridge: HostBridge) {
     void refresh();
   }
   const unsubscribe = bridge.subscribe(receive);
-  return {
-    selection,
-    getSnapshot: () => state,
-    subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
-    async start() {
+  async function start() {
       try {
         const capabilities = await bridge.request<Capabilities>('capabilities', null, null);
         const c = capabilities.payload;
@@ -129,7 +125,13 @@ export function createEditorModel(bridge: HostBridge) {
       } catch (error) {
         if (!disposed) emit({ status: error instanceof HostBridgeError && error.code === 'unsupported' ? 'unavailable' : 'error', error: error instanceof Error ? error.message : 'Host unavailable' });
       }
-    },
+    }
+  return {
+    selection,
+    getSnapshot: () => state,
+    subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
+    start,
+    retry: () => subscribed ? refresh() : start(),
     refresh,
     selectRows(ids: string[]) {
       if (!state.projection) return;

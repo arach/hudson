@@ -58,6 +58,18 @@ describe('model', () => {
     const broken = createEditorModel(createHostBridge(transport(async () => { throw new Error('offline'); })));
     await broken.start(); expect(broken.getSnapshot().status).toBe('error'); broken.dispose();
   });
+  test('Retry recovers discovery and subscription failures', async () => {
+    for (const kind of ['capabilities', 'events.subscribe']) {
+      const mock = createMockTransport(); let fail = true;
+      const model = createEditorModel(createHostBridge({ ...mock.transport, async request(m) {
+        if (m.kind === kind && fail) { fail = false; throw new Error('Temporary connection failure'); }
+        return mock.transport.request(m);
+      } }));
+      await model.start(); expect(model.getSnapshot().status).toBe('error');
+      await model.retry(); expect(model.getSnapshot().status).toBe('ready');
+      model.dispose();
+    }
+  });
   test('stale_revision retries latest source without mutation', async () => {
     const mock = createMockTransport(); mock.stale();
     const model = createEditorModel(createHostBridge(mock.transport));
