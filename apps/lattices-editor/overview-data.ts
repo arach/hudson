@@ -7,7 +7,7 @@ export function overviewFacts(projection: Projection, id: string) {
     try { const value: unknown = JSON.parse(entry.canonical); if (value && typeof value === 'object' && !Array.isArray(value)) raw = value as Record<string, unknown>; } catch { /* Host-defined content may not be JSON. */ }
     const match = raw.match && typeof raw.match === 'object' ? raw.match as Record<string, unknown> : raw;
     const app = typeof match.app === 'string' ? match.app : undefined;
-    const conditions = ['title','url','path','group'].flatMap(key => typeof match[key] === 'string' ? [`${key}: ${match[key]}`] : []);
+    const conditions = ['title','titleContains','titleEquals','titleRegex','url','path','group'].flatMap(key => typeof match[key] === 'string' ? [`${key==='title'||key==='titleContains'?'title has':key==='titleEquals'?'title is':key}: ${JSON.stringify(match[key])}`] : []);
     return { key:entry.key, app, text: conditions.join(' · ') || (app ? `App is ${app}` : entry.canonical),
       open: rows.filter(r => r.entryKeys.includes(entry.key)).length,
       occurrences: entry.ranges.length, pins: Array.isArray(raw.pins) ? raw.pins.length : undefined,

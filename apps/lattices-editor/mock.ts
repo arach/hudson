@@ -1,6 +1,7 @@
+import { pass2Fixture } from './mock-pass2';
 import type { HostEnvelope, HostTransport } from '../../packages/web/hudsonkit/src/editor/host-bridge';
 /** Synthetic development fixture. No membership resolver or production fallback. */
-export function createMockTransport(options: { selectedLayerIds?: string[]; rich?: boolean; overview?: boolean; chrome?: 'host'; unreadable?: boolean } = {}) {
+export function createMockTransport(options: { pass2?:boolean; selectedLayerIds?: string[]; rich?: boolean; overview?: boolean; chrome?: 'host'; unreadable?: boolean } = {}) {
   let version = 1, inventory = 1, unreadable = options.unreadable ?? false, staleOnce = false;
   const listeners = new Set<(event: unknown) => void>();
   const calls: string[] = [];
@@ -9,6 +10,7 @@ export function createMockTransport(options: { selectedLayerIds?: string[]; rich
   const revision = () => `mock:${version}`;
   const subject = () => ({ id, kind: 'lattices.workspace-layers', label: 'Workspace Layers', revision: unreadable ? null : revision() });
   function fixture() {
+    if(options.pass2)return pass2Fixture(version);
     const project = { match: { app: 'Synthetic Editor 🚀' }, saved: false };
     const additional = options.rich ? Array.from({ length: options.overview ? 2 : 12 }, (_, i) => ({
       match: { app: ['Ghostty', 'Xcode', 'Safari'][i % 3], title: ['Build logs', 'Workspace.swift', 'Design reference'][i % 3] + ' ' + (i + 1) },

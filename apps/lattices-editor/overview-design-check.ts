@@ -36,7 +36,7 @@ try {
   await page.getByRole("heading",{name:"Build 1",exact:true}).waitFor();
   const editor=await page.locator('.cm-editor').elementHandle();
   assert(await page.locator('.layer-picker').isVisible()===(width===560),'Narrow picker replaces index');
-  assert(await page.locator('.matched-by').isVisible()===(width===1280),'Narrow hides match details');
+  assert(await page.locator('.rule-column').first().isVisible()===(width===1280),'Narrow hides match details');
   await page.screenshot({path:`${import.meta.dir}/design-evidence/overview-${width}.png`});
   await page.getByRole('button',{name:'+ Preview',exact:true}).click();await page.getByRole('listbox').waitFor();
   assert(await page.locator('.editor-root').getAttribute('data-view')==='workspace','Add Preview opens Workspace');
@@ -55,7 +55,7 @@ try {
   await page.reload();await page.getByRole('listbox').waitFor();assert(await page.locator('.editor-root').getAttribute('data-view')==='workspace','Workspace preference restores');
   await page.evaluate(()=>editorMock.command({command:'view',value:'overview'}));await page.locator('.layer-reading h1').waitFor();
   if(width===560)await page.getByLabel('Choose layer').selectOption('overview:0');else await page.locator('.layer-index').getByRole('button',{name:'Research —',exact:true}).click();
-  await page.getByRole('heading',{name:'Research',exact:true}).waitFor();assert(await page.getByText('No windows are open.',{exact:true}).isVisible(),'Empty layer data');
+  await page.getByRole('heading',{name:'Research',exact:true}).waitFor();assert(await page.getByText('0 rules are waiting for a matching window.',{exact:true}).isVisible(),'Empty layer data');
   if(width===560)await page.getByLabel("Choose layer").selectOption("unassigned");else await page.locator(".unassigned-index button").click();
   await page.getByRole("heading",{name:"Unassigned",exact:true}).waitFor();
   assert(JSON.stringify(await headingStyle())===JSON.stringify(heading),"Unassigned uses identical UI typography");
