@@ -22,6 +22,10 @@ try {
     await page.locator(".layer-index nav button").first().click();
     await page.getByRole("heading",{name:"Build 1",exact:true}).waitFor();
     await page.screenshot({path:import.meta.dir+"/design-evidence/desk-layer-1280.png"});
+    await page.evaluate(()=>editorMock.command({command:"selectLayers",value:["overview:0"]}));
+    await page.getByRole("heading",{name:"Research",exact:true}).waitFor();
+    assert(await page.locator(".layer-index nav button").first().evaluate(el=>getComputedStyle(el).backgroundColor==="rgba(0, 0, 0, 0)" && el!==document.activeElement),"Host selection clears stale focus and hover cannot mimic selection");
+    await page.locator(".layer-index nav button").first().click();
     await page.locator(".layer-index nav button").nth(1).click({modifiers:["Meta"]});
     await page.getByRole("heading",{name:"2 layers",exact:true}).waitFor();
     assert(await page.locator(".layer-index nav button[aria-pressed=true]").count()===2,"Cmd-click keeps both layers");

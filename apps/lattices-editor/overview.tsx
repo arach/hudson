@@ -10,6 +10,8 @@ function LayerComposer({ label }: { label: string }) {
   return <div className="overview-composer" ref={host} />;
 }
 export function Overview({ projection, readAt, onOpen, selectedLayerIds, onSelectLayers }: { selectedLayerIds:string[]; onSelectLayers:(ids:string[])=>void; projection: Projection | null; readAt:number|null; onOpen:(panel?:'preview'|'source'|'history', ids?:string[], layerId?:string)=>void }) {
+  const indexHost=useRef<HTMLElement>(null);
+  useLayoutEffect(()=>{const active=document.activeElement;if(active instanceof HTMLElement && indexHost.current?.contains(active) && active.getAttribute('aria-pressed')==='false') active.blur();},[selectedLayerIds]);
   const [now,setNow]=useState(Date.now);
   useEffect(()=>{const t=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(t);},[]);
   const groups=projection?.groups ?? []; const layers=groups.filter(g=>!isUnassigned(g)); const unassigned=groups.find(isUnassigned);
@@ -20,7 +22,7 @@ export function Overview({ projection, readAt, onOpen, selectedLayerIds, onSelec
   const open=(panel?:'preview'|'source'|'history')=>onOpen(panel, facts.rows.map(r=>r.id), single?.id);
   const layerRow=(g:typeof group)=> <button key={g.id} aria-pressed={selectedLayerIds.includes(g.id)} onClick={e=>onSelectLayers(toggleLayer(selectedLayerIds,g.id,e.metaKey||e.ctrlKey))}><span className="layer-dot" data-open={!!g.rows.length}/><span>{g.label}</span><code>{isUnassigned(g)?g.rows.length:g.rows.length||'—'}</code></button>;
   return <div className="overview">
-    <aside className="layer-index" aria-label="Layers"><h2>Layers <span>{layers.length}</span></h2><button aria-pressed={!selectedLayerIds.length} onClick={()=>onSelectLayers([])}><span className="layer-dot" data-open={groups.some(g=>g.rows.length>0)}/><span>All windows</span><code>{groups.reduce((n,g)=>n+g.rows.length,0)}</code></button><nav>{layers.map(layerRow)}</nav>{unassigned && <div className="unassigned-index">{layerRow(unassigned)}</div>}
+    <aside ref={indexHost} className="layer-index" aria-label="Layers"><h2>Layers <span>{layers.length}</span></h2><button aria-pressed={!selectedLayerIds.length} onClick={()=>onSelectLayers([])}><span className="layer-dot" data-open={groups.some(g=>g.rows.length>0)}/><span>All windows</span><code>{groups.reduce((n,g)=>n+g.rows.length,0)}</code></button><nav>{layers.map(layerRow)}</nav>{unassigned && <div className="unassigned-index">{layerRow(unassigned)}</div>}
       <footer><div>workspace.json</div>{readAt!==null && <div>Read {Math.max(0,Math.floor((now-readAt)/1000))}s ago</div>}</footer>
     </aside>
     <div className="overview-main">

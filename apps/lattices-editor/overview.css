@@ -29,7 +29,8 @@
 .layer-index button>span:nth-child(2) { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .layer-index button code { color:var(--faint); font:var(--mono-note)/1.5 var(--hud-font-mono); }
 .layer-index button[aria-pressed=true] { background:var(--raise); color:var(--ink); }
-.layer-index button:hover { background:var(--raise); }
+.layer-index button:hover { color:var(--ink); }
+.layer-index button:focus-visible { outline:1px solid var(--green); outline-offset:-1px; }
 .layer-dot { display:inline-block; width:7px; height:7px; flex:none; border:1px solid var(--subtle); border-radius:50%; }
 .layer-dot[data-open=true] { border-color:var(--green); background:var(--green); }
 .unassigned-index { border-top:1px solid var(--line); padding-top:10px; margin-top:14px; }
