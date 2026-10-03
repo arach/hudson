@@ -3,7 +3,7 @@ import {createActionGuard,equalNativeData} from './action-guard';
 export interface ActIntent {kind:'gather'|'open';layerId:string;entryIndex?:number}
 export interface ActPlan extends ActIntent {planId:string;expiresAt:string;title:string;explanation:string;lines:string[];warnings:string[]}
 export interface ActResult {actionId:string;planId:string|null;layerId:string|null;ok:boolean;at:string;message:string;undoable:boolean}
-export interface ActHistory {actionId:string;label:string;at:string;undoable:boolean}
+export interface ActHistory {actionId:string;label:string;at:string;undoable:boolean;counts?:Record<string,number>}
 export interface AssistantSnapshot {layerId:string;messages:{id:string;role:'user'|'assistant';text:string;readRules?:number;readWindows?:number}[];isSending:boolean;error:string|null;suggestions:(ActIntent&{label:string})[]}
 export interface ActBackend {
  plan(intent:ActIntent):Promise<ActPlan>;
@@ -33,7 +33,7 @@ export function createActController(backend:ActBackend,onResult:()=>void=()=>{})
   async plan(intent:ActIntent){if(disposed||state.busy)return;ticket=gate.begin();const local=ticket;emit({planning:true,plan:null,error:null});try{const plan=await backend.plan(intent);if(gate.accepts(local))emit({plan,planning:false});}catch(error){if(gate.accepts(local))fail(error);}},
   async confirm(){const plan=state.plan;if(!plan||state.busy||disposed)return;if(Date.parse(plan.expiresAt)<=Date.now()){cancel();emit({error:'This plan expired. Review a new plan before confirming.'});return;}if(!gate.consume(ticket))return;emit({busy:true,plan:null,error:null});try{const result=await backend.confirm(plan.planId);if(result)receiveResult(result);}catch(error){fail(error);}},
   async reveal(){if(disposed||state.busy)return;cancel();emit({busy:true,error:null});try{const result=await backend.reveal();if(result)receiveResult(result);}catch(error){fail(error);}},
-  async undo(){if(disposed||state.busy||!state.newestUndoableActionId)return;const id=state.newestUndoableActionId;cancel();emit({busy:true,error:null});try{const result=await backend.undo(id);if(result)receiveResult(result);}catch(error){fail(error);}},
+  async undo(){if(disposed||state.busy||!state.newestUndoableActionId)return;const id=state.newestUndoableActionId;cancel();emit({busy:true,error:null,newestUndoableActionId:null});try{const result=await backend.undo(id);if(result)receiveResult(result);}catch(error){fail(error);}},
   async list(){try{const data=await backend.list();emit({history:data.actions,newestUndoableActionId:data.newestUndoableActionId});}catch(error){emit({error:error instanceof Error?error.message:'Could not read recent actions.'});}},
   async send(layerId:string,text:string){if(disposed||!text.trim()||state.assistant[layerId]?.isSending)return false;try{await backend.send(layerId,text.trim());return true;}catch(error){emit({error:error instanceof Error?error.message:'Could not send message.'});return false;}},
   receiveResult,

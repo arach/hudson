@@ -304,3 +304,19 @@ it. Suggestions use exactly the same plan/confirm path as header/row actions.
 Repeated native state/result events must preserve referential identity when
 unchanged. Match the local ActLayer/ActConfirm/ActDone boards, retaining the
 emerald register and neutral failure copy. Native wire agreement precedes code.
+
+### Undo addendum
+
+The receipt puts Undo before Show all windows and Details. History is a native
+read-only newest-first list; only its explicit newestUndoableActionId enables
+Undo. The web never reconstructs frames or chooses older actions. Undo consumes
+the local latest ID immediately and waits for an authoritative history refresh
+before enabling another operation. Native receipt text preserves restored and
+skipped reasons, including “Opened apps stay open”. Cmd-Z is page-scoped and
+never captures undo from the composer, other inputs or CodeMirror. No real
+Gather/Open/Undo is used in development verification.
+
+Status: confirmation/chat/history surfaces and safety controllers are prepared,
+not connected to native operations. Exact envelope/result/history and assistant
+DTO agreement is still pending with the native builder. Do not import these
+preparation commits as a completed Act release; production dist is unchanged.
