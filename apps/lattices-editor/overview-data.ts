@@ -6,7 +6,7 @@ export function overviewFacts(projection: Projection, id: string) {
     let raw: Record<string, unknown> = {};
     try { const value: unknown = JSON.parse(entry.canonical); if (value && typeof value === 'object' && !Array.isArray(value)) raw = value as Record<string, unknown>; } catch { /* Host-defined content may not be JSON. */ }
     const match = raw.match && typeof raw.match === 'object' ? raw.match as Record<string, unknown> : raw;
-    const app = typeof match.app === 'string' ? match.app : undefined;
+    const app = [raw.app,match.appEquals,match.app].find((value):value is string=>typeof value==='string'&&value.length>0);
     const conditions = ['title','titleContains','titleEquals','titleRegex','url','path','group'].flatMap(key => typeof match[key] === 'string' ? [`${key==='title'||key==='titleContains'?'title has':key==='titleEquals'?'title is':key}: ${JSON.stringify(match[key])}`] : []);
     return { key:entry.key, app, text: conditions.join(' · ') || (app ? `App is ${app}` : entry.canonical),
       open: rows.filter(r => r.entryKeys.includes(entry.key)).length,

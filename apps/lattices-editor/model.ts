@@ -1,10 +1,11 @@
+import {validLayout, type ShouldBeLayout} from "./should-be-data";
 import { validFrame, type Frame, type Display, type LayoutPreview } from './geometry';
 import { isLayerIds, isUICommand, type UICommand, type EditorView, type layoutState } from './ui';
 import { createRevisionGuard, HostBridgeError, type HostBridge, type HostEnvelope } from '../../packages/web/hudsonkit/src/editor/host-bridge';
 import { createSubjectStore, type EditorSubject, type EditorSelection, type SourceRange } from '../../packages/web/hudsonkit/src/editor/subject-store';
 export interface Entry { key: string; layerId: string; canonical: string; ranges: SourceRange[]; ambiguous: boolean }
 export interface PreviewRow { frame?:Frame|null; displayId?:string|null; matchedRule?:number|null; frameSource?:'live'|'lastKnown'|'savedHome'|'unavailable'; id: string; windowId: number; app: string; title: string; layerId: string | null; entryKeys: string[] }
-export interface Projection { displays?:Display[]; snapshotId: string; groups: { id: string; label: string; preview?:LayoutPreview; rows: PreviewRow[] }[]; entries: Entry[] }
+export interface Projection { displays?:Display[]; snapshotId: string; groups: { id: string; label: string; preview?:LayoutPreview; layout?:ShouldBeLayout; rows: PreviewRow[] }[]; entries: Entry[] }
 interface SubjectRead { subject: EditorSubject; source: { text: string; language: 'json' } }
 interface Capabilities { selectedLayerIds?: string[]; chrome?: 'host'; readOnly: boolean; methods: string[]; subject: Omit<EditorSubject, 'revision'> & { revision: string | null }; terminal: boolean }
 export interface EditorState {
@@ -44,12 +45,19 @@ export function validateProjection(p: unknown, text: string): asserts p is Proje
   for (const g of p.groups) {
     if (!record(g) || typeof g.id !== 'string' || groups.has(g.id) || typeof g.label !== 'string' || !Array.isArray(g.rows)) throw new Error('Invalid preview group');
     groups.add(g.id);
+    if(g.layout!==undefined&&!validLayout(g.layout)) throw new Error("Invalid layer layout");
     for (const r of g.rows) {
       if (!record(r) || typeof r.id !== 'string' || rows.has(r.id) || !Number.isInteger(r.windowId) ||
         typeof r.app !== 'string' || typeof r.title !== 'string' || !(r.layerId === null || typeof r.layerId === 'string') ||
         !Array.isArray(r.entryKeys) || r.entryKeys.some(k => typeof k !== 'string' || !keys.has(k))) throw new Error('Invalid preview row');
       if (r.frame!=null&&!validFrame(r.frame) || r.displayId!=null&&typeof r.displayId!=='string' || r.matchedRule!=null&&(!Number.isInteger(r.matchedRule)||(r.matchedRule as number)<0) || r.frameSource!==undefined&&!['live','lastKnown','savedHome','unavailable'].includes(String(r.frameSource))) throw new Error('Invalid row geometry');
       rows.add(r.id);
+    }
+    if(g.layout!==undefined&&validLayout(g.layout)) {
+      const rawEntries=p.entries.filter(e=>e.layerId===g.id).flatMap(e=>e.ranges.map((r:{from:number})=>({key:e.key,from:r.from}))).sort((a,b)=>a.from-b.from);
+      const seen=new Set<number>();
+      for(const t of [...g.layout.openTargets,...g.layout.allTargets]) if(rawEntries[t.entryIndex]?.key!==t.entryKey) throw new Error('Invalid layout entry identity');
+      for(const t of g.layout.openTargets) {if(seen.has(t.windowId)||!g.rows.some((r:PreviewRow)=>r.windowId===t.windowId&&r.entryKeys.includes(t.entryKey))) throw new Error('Invalid layout window identity');seen.add(t.windowId);}
     }
     if (g.preview!==undefined && (!record(g.preview)||typeof g.preview.layout!=='string'||typeof g.preview.displayId!=='string'||!Array.isArray(g.preview.frames)||g.preview.frames.some(f=>!record(f)||!Number.isInteger(f.windowId)||!(g.rows as Record<string,unknown>[]).some((r:Record<string,unknown>)=>r.windowId===f.windowId)||!validFrame(f.frame)))) throw new Error('Invalid proposed geometry');
   }

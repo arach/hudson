@@ -144,3 +144,41 @@ No pixel-match claim. Bounded reviewer scored both identified fixes resolved.
 14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  jetbrains-mono-latin-400-normal.woff2
 400c6bfda18d5d14acad1c15d6dcb9f8e13c015e7286317e0b9a482539bef147  jetbrains-mono-latin-600-normal.woff2
 ```
+
+## Should be release (supersedes the separate Preview page)
+
+Built against native `1dd81b99` / EditorLayout.swift. The Layout card defaults to
+Should be. Native frames and lane labels drive the illustration. Live-only Now
+uses the same scale. The local controls never send bridge operations. Unopened
+slots are illustrative reservations, not inferred executable moves. WontMove
+reasons, ambiguous targets and skipped-entry explanations stay visible. Missing
+layout and explicit `none` have distinct Now-only explanations. The pinned chat,
+shared layer selection and stable Workspace/CodeViewer mounts are unchanged.
+
+Verification: production build, typecheck and scoped lint exit 0 (lint retains
+its existing pages-directory advisory). Unit tests: **49 pass, 0 fail, 199
+assertions**. Full browser suite passes desktop/narrow, host chrome, selection,
+stable Source, persistence, short pinned composers, and Should be/All/Now controls.
+
+Local ShouldBe, ShouldBeAll and ShouldBeNow exports were opened in headless
+Chrome and compared. Evidence under `design-evidence/`:
+
+- `should-be-1280.png`, `should-be-all-1280.png`, `should-be-now-1280.png`
+- `should-be-560.png`, `should-be-all-560.png`, `should-be-now-560.png`
+
+Wide evidence uses 1280×1200 to include the retained pinned composer as well as
+the Layout card/table; narrow uses 560×820. Native shell chrome is not part of
+the web evidence. Fixture names/counts are not copied from the illustrative
+boards. All-entry statuses intentionally say reservation rather than Moves:
+this follows the frozen native contract, not the board's illustrative pills.
+
+Dist: `/Users/arach/dev/hudson-worktrees/lattices-editor-slice-1/apps/lattices-editor/dist/`
+
+```text
+aa41f026479c1a91a8c9ffc8dad230cf019105e0a8374b40779a61eaf862eb4d  editor.css
+b4aa079cf5c00d1dae4fb507b07481c9861405ffbbe0568b4a49d770d92f5723  editor.js
+6ceb52eedcfc21964230e4e1793d4e9703b7d76393b8a3808229b6c30c19c208  index.html
+403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b  jetbrains-mono-LICENSE.txt
+14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  jetbrains-mono-latin-400-normal.woff2
+400c6bfda18d5d14acad1c15d6dcb9f8e13c015e7286317e0b9a482539bef147  jetbrains-mono-latin-600-normal.woff2
+```

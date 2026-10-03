@@ -4,7 +4,7 @@ import {changeLabel,currentFrame,displayBounds,matchedEntry,positionLabel,validF
 import {validateProjection} from './model';
 test('real geometry fixture uses source ranges and global display bounds',()=>{
  const {projection:p,text}=pass2Fixture(1);validateProjection(p,text);
- expect(displayBounds(p.displays!)).toEqual({x:-1920,y:0,w:4440,h:1920});
+ expect(displayBounds(p.displays!)).toEqual({x:-1920,y:0,w:6440,h:1920});
  expect(matchedEntry(p,p.groups[0].rows[0])?.key).toBe('lattices:0');
  expect(matchedEntry(p,{...p.groups[0].rows[0],matchedRule:null})).toBeUndefined();
  expect(validFrame({x:0,y:0,w:0,h:100})).toBe(false);

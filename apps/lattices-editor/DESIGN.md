@@ -260,3 +260,31 @@ the toggle hides with the stage, while the labelled text moves remain.
 Bounded review identified provenance and narrow-toggle defects; both were
 corrected and the reviewer scored both resolved. Board fidelity remains
 unverified because PolishLayer/PolishPreview exports have not arrived.
+
+## Should be addendum (v11, frozen wire)
+
+Replace the separate preview page with one Layout card and unified target table.
+Should be is the default for an available configured layout; Now uses identical
+main-display scale. The main display keeps true aspect, lane names/widths sit
+above it, and current-position outlines can be switched off. Include not open
+switches to the complete target set; unopened targets are dashed/hatched and
+never invented. Native Moves/Stays/wontMove classifications and reasons are
+authoritative. Current drawings are live-only. Kind none has only Now and an
+explicit no-arrangement explanation. This is visualization only, with no native
+mutation messages. No serif. The frozen wire shape is documented in
+editor-read-bridge-v1.md; local board exports were opened and compared.
+
+### Should be implementation and reference comparison
+
+The wire is frozen against native `EditorLayout.swift` at 1dd81b99. Layout is
+an inline card, initially Should be; Now uses the same display scale. No separate
+Preview page remains. Native absolute target frames and native ruler labels
+are used without recalculating arrangements. All-entry mode is explicitly an
+illustrative reservation, never a claim that an unopened window moves.
+
+Compared with local ShouldBe/ShouldBeAll/ShouldBeNow HTML boards: retain the
+700px display, emerald glass, dashed current outlines, hatched unopened slots,
+compact segmented control, ruler and unified rule table. Native app chrome is
+outside this bundle. The pinned chat remains from the approved earlier pass;
+therefore shorter viewports scroll the rule table rather than clipping chat.
+Mock geometry and counts differ intentionally from the illustrative board.
