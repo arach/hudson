@@ -37,3 +37,8 @@ export function overviewSelectionFacts(projection: Projection, ids: string[]) {
 export function toggleLayer(ids: string[], id: string, additive: boolean) {
   return additive ? ids.includes(id) ? ids.filter(value=>value!==id) : [...ids,id] : [id];
 }
+
+/** Render the heading and rows from the same list: never leave an empty Waiting section. */
+export function waitingRules(rules:ReturnType<typeof overviewFacts>['rules']) {
+ return rules.filter(rule=>rule.open===0).flatMap(rule=>Array.from({length:Math.max(0,Math.floor(rule.occurrences))},(_,occurrence)=>({...rule,rowKey:`${rule.key}:${occurrence}`})));
+}
