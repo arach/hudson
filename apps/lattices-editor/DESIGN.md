@@ -316,7 +316,26 @@ skipped reasons, including “Opened apps stay open”. Cmd-Z is page-scoped and
 never captures undo from the composer, other inputs or CodeMirror. No real
 Gather/Open/Undo is used in development verification.
 
-Status: confirmation/chat/history surfaces and safety controllers are prepared,
+Preparation status (before frozen v1): confirmation/chat/history surfaces and safety controllers are prepared,
 not connected to native operations. Exact envelope/result/history and assistant
 DTO agreement is still pending with the native builder. Do not import these
 preparation commits as a completed Act release; production dist is unchanged.
+
+### Act frozen-v1 implementation
+
+Implemented against the coordinator-approved EDITOR-ACT-WIRE.md, copied to
+`docs/proposals/editor-act-wire-v1.md`. Terminal correlated replies and duplicate
+`action.result` events share one receipt keyed by actionId. Assistant state uses
+structural equality, per-layer caches and generation checks; system messages
+are not rendered. No response dispatches an action or executes suggestion text.
+
+The native plan supplies the confirmation explanation, opening descriptions,
+shortcut and known counts. Unknown putAwayCount is omitted. No shortcut is
+invented before the host supplies one. Canonical source provides only provisional
+row hints; the displayed native plan controls the actual operation. Open is
+launch-only. Source stays read-only; the standalone Read only badge is removed.
+
+Undo requires both advertised action.undo and an authoritative newest ID. History
+refreshes after each terminal result. Page Cmd-Z also works in Workspace while
+preserving all text editors' own undo. Missing action capabilities retain passive
+inspection; there is no fallback mutation path. Mock fixtures are dev-only.

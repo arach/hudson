@@ -1,7 +1,8 @@
+import {createActMock} from './mock-act';
 import { pass2Fixture } from './mock-pass2';
 import type { HostEnvelope, HostTransport } from '../../packages/web/hudsonkit/src/editor/host-bridge';
 /** Synthetic development fixture. No membership resolver or production fallback. */
-export function createMockTransport(options: { pass2?:boolean; selectedLayerIds?: string[]; rich?: boolean; overview?: boolean; chrome?: 'host'; unreadable?: boolean } = {}) {
+export function createMockTransport(options: { act?:boolean; pass2?:boolean; selectedLayerIds?: string[]; rich?: boolean; overview?: boolean; chrome?: 'host'; unreadable?: boolean } = {}) {
   let version = 1, inventory = 1, unreadable = options.unreadable ?? false, staleOnce = false;
   const listeners = new Set<(event: unknown) => void>();
   const calls: string[] = [];
@@ -10,7 +11,7 @@ export function createMockTransport(options: { pass2?:boolean; selectedLayerIds?
   const revision = () => `mock:${version}`;
   const subject = () => ({ id, kind: 'lattices.workspace-layers', label: 'Workspace Layers', revision: unreadable ? null : revision() });
   function fixture() {
-    if(options.pass2)return pass2Fixture(version);
+    if(options.pass2){const f=pass2Fixture(version);if(options.act&&actMock.settled){f.projection.snapshotId+=':settled';const g=f.projection.groups[0];for(const target of g.layout!.openTargets){target.status='stays';delete target.reason;const row=g.rows.find(r=>r.windowId===target.windowId)!;row.frame=target.frame;row.displayId=target.displayId;}}return f;}
     const project = { match: { app: 'Synthetic Editor 🚀' }, saved: false };
     const additional = options.rich ? Array.from({ length: options.overview ? 2 : 12 }, (_, i) => ({
       match: { app: ['Ghostty', 'Xcode', 'Safari'][i % 3], title: ['Build logs', 'Workspace.swift', 'Design reference'][i % 3] + ' ' + (i + 1) },
@@ -53,6 +54,7 @@ export function createMockTransport(options: { pass2?:boolean; selectedLayerIds?
       payload: { subscriptionId: 'mock:subscription', at: new Date().toISOString() } };
     listeners.forEach(fn => fn(event));
   }
+  const actMock=createActMock(fixture,(kind,payload)=>listeners.forEach(fn=>fn({v:1,requestId:null,subjectId:id,revision:revision(),kind,payload})));
   const transport: HostTransport = {
     subscribe(fn) { listeners.add(fn); return () => { listeners.delete(fn); }; },
     async request(message) {
@@ -61,9 +63,10 @@ export function createMockTransport(options: { pass2?:boolean; selectedLayerIds?
         ...message, subjectId: id, revision: unreadable ? null : revision(), kind, payload,
       });
       const error = (code: string, message: string) => result({ code, message }, 'error');
+      if(options.act&&actMock.methods.includes(message.kind)){try{return result(await actMock.handle(message));}catch(e){return error('mock_action_failed',e instanceof Error?e.message:'Mock action failed');}}
       switch (message.kind) {
         case 'ui.state': uiStates.push(message.payload); return { ...result({}), revision: null };
-        case 'capabilities': return result({ selectedLayerIds: options.selectedLayerIds, chrome: options.chrome, readOnly: true, methods: ['subject.read', 'preview.project', 'events.subscribe'], subject: subject(), terminal: false });
+        case 'capabilities': return result({ selectedLayerIds: options.selectedLayerIds, chrome: options.chrome, readOnly: !options.act, methods: ['subject.read', 'preview.project', 'events.subscribe',...(options.act?actMock.methods:[])], subject: subject(), terminal: false });
         case 'events.subscribe': return result({ subscriptionId: 'mock:subscription' });
         case 'subject.read': return unreadable ? error('unavailable', 'Synthetic workspace JSON is invalid.') : result({ subject: subject(), source: { text: fixture().text, language: 'json' } });
         case 'preview.project':
@@ -74,7 +77,7 @@ export function createMockTransport(options: { pass2?:boolean; selectedLayerIds?
       }
     },
   };
-  return { transport, calls, fixture, emit, uiStates,
+  return { transport, actMock, calls, fixture, emit, uiStates,
     command(payload: unknown) { listeners.forEach(fn => fn({ v:1, requestId:null, subjectId:id, revision:null, kind:"ui.command", payload })); },
     change() { version++; emit(); },
     inventory() { inventory++; emit('windows.changed'); },

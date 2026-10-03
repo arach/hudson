@@ -27,7 +27,7 @@
     "build:lattices-editor": "bun apps/lattices-editor/build.ts",
     "test:lattices-editor": "bun test apps/lattices-editor",
     "typecheck:lattices-editor": "bun x tsc -p apps/lattices-editor/tsconfig.json",
-    "test:lattices-editor:browser": "bun apps/lattices-editor/build.ts --dev && bun apps/lattices-editor/design-check.ts && bun apps/lattices-editor/host-design-check.ts && bun apps/lattices-editor/overview-design-check.ts && bun apps/lattices-editor/short-height-check.ts && bun apps/lattices-editor/pass2-check.ts"
+    "test:lattices-editor:browser": "bun apps/lattices-editor/build.ts --dev && bun apps/lattices-editor/design-check.ts && bun apps/lattices-editor/host-design-check.ts && bun apps/lattices-editor/overview-design-check.ts && bun apps/lattices-editor/short-height-check.ts && bun apps/lattices-editor/pass2-check.ts && bun apps/lattices-editor/act-check.ts"
   },
   "workspaces": [
     "apps/web",

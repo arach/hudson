@@ -280,3 +280,8 @@
 .lv .action-history li {display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 0;border-top:1px solid var(--line-soft);}
 .lv .action-history small {display:block;color:var(--faint);font:400 10px var(--hud-font-mono);}
 .lv .action-history button {border:0;background:none;color:var(--em-text);font-size:12px;}
+.lv .layout-rules .launch-hint {margin-top:4px;font:400 10px/1.5 var(--hud-font-sans);color:var(--faint);}
+.lv .layout-rules .act-quiet {margin-top:4px;}
+.lv .overview-chat:has(.live-composer) {display:flex;flex-direction:column;min-height:0;max-height:48vh;}
+.lv .overview-chat:has(.live-composer) .live-composer {flex:none;}
+.lv .overview-chat:has(.live-composer) .layer-messages {min-height:0;flex:1;}

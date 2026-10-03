@@ -6,7 +6,7 @@ import { createLatticesEditorApp } from './app';
 let transport = createWKReplyTransport(globalThis as unknown as Parameters<typeof createWKReplyTransport>[0]);
 if (process.env.NODE_ENV !== 'production' && new URLSearchParams(location.search).has('mock')) {
   const query = new URLSearchParams(location.search);
-  const mock = createMockTransport({ pass2:query.has('pass2'), selectedLayerIds:query.has('pass2')?['lattices']:undefined, rich: true, overview: query.has('overviewfixture'), chrome: query.has('host') ? 'host' : undefined, unreadable: query.has('unreadable') });
+  const mock = createMockTransport({ act:query.has('act'), pass2:query.has('pass2')||query.has('act'), selectedLayerIds:query.has('pass2')||query.has('act')?['lattices']:undefined, rich: true, overview: query.has('overviewfixture'), chrome: query.has('host') ? 'host' : undefined, unreadable: query.has('unreadable') });
   Object.assign(globalThis, { editorMock: mock });
   mountMockControls(mock);
   transport = mock.transport;

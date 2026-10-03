@@ -1,3 +1,4 @@
+import {createActClient} from './act-wire';
 import {validLayout, type ShouldBeLayout} from "./should-be-data";
 import { validFrame, type Frame, type Display, type LayoutPreview } from './geometry';
 import { isLayerIds, isUICommand, type UICommand, type EditorView, type layoutState } from './ui';
@@ -9,7 +10,7 @@ export interface Projection { displays?:Display[]; snapshotId: string; groups: {
 interface SubjectRead { subject: EditorSubject; source: { text: string; language: 'json' } }
 interface Capabilities { selectedLayerIds?: string[]; chrome?: 'host'; readOnly: boolean; methods: string[]; subject: Omit<EditorSubject, 'revision'> & { revision: string | null }; terminal: boolean }
 export interface EditorState {
-  selectedLayerIds: string[]; view: EditorView; readAt: number | null;
+  methods:string[]; selectedLayerIds: string[]; view: EditorView; readAt: number | null;
   chrome: 'host' | 'standalone'; uiError: string | null;
   status: 'loading' | 'ready' | 'unavailable' | 'error'; error: string | null;
   document: SubjectRead | null; projection: Projection | null;
@@ -77,7 +78,7 @@ export function selectionForRanges(projection: Projection, ranges: SourceRange[]
 }
 export function createEditorModel(bridge: HostBridge) {
   const selection = createSubjectStore();
-  let state: EditorState = { selectedLayerIds: [], view: 'overview', readAt: null, chrome: 'standalone', uiError: null, status: 'loading', error: null, document: null, projection: null, history: [] };
+  let state: EditorState = { methods:[], selectedLayerIds: [], view: 'overview', readAt: null, chrome: 'standalone', uiError: null, status: 'loading', error: null, document: null, projection: null, history: [] };
   const uiListeners = new Set<(command: UICommand) => void>();
   const uiQueue: UICommand[] = [];
   let uiSend = Promise.resolve();
@@ -86,7 +87,8 @@ export function createEditorModel(bridge: HostBridge) {
   const guard = createRevisionGuard();
   let subjectId: string | null = null, disposed = false, refreshing = false, pending = false;
   let subscribed = false;
-  const emit = (patch: Partial<EditorState>) => { state = { ...state, ...patch }; listeners.forEach(fn => fn()); };
+  const actions=createActClient(bridge,()=>({subjectId,revision:state.document?.subject.revision??null}),()=>{void refresh();});
+  const emit = (patch: Partial<EditorState>) => { state = { ...state, ...patch }; actions.controller.setContext(JSON.stringify([subjectId,state.document?.subject.revision,state.projection?.snapshotId,state.selectedLayerIds,state.view]));listeners.forEach(fn => fn()); };
   async function refresh() {
     if (disposed || !subjectId || !subscribed) return;
     pending = true;
@@ -142,10 +144,11 @@ export function createEditorModel(bridge: HostBridge) {
       try {
         const capabilities = await bridge.request<Capabilities>('capabilities', null, null);
         const c = capabilities.payload;
-        if (!record(c) || !isDiscoverySubject(c.subject) || !Array.isArray(c.methods) || c.readOnly !== true ||
+        if (!record(c) || !isDiscoverySubject(c.subject) || !Array.isArray(c.methods) || typeof c.readOnly !== 'boolean' ||
           !['subject.read', 'preview.project', 'events.subscribe'].every(m => c.methods.includes(m)) ||
           capabilities.subjectId !== c.subject.id || capabilities.revision !== c.subject.revision) throw new HostBridgeError('unsupported', 'Required editor capability missing');
         subjectId = c.subject.id;
+        actions.setMethods(c.methods);emit({methods:c.methods});
         let view: EditorView = 'overview';
         try { if (globalThis.localStorage?.getItem(`lattices.editor.view.v1:${subjectId}`) === 'workspace') view = 'workspace'; } catch { /* Unavailable storage keeps the default. */ }
         let selectedLayerIds: string[] = [];
@@ -184,7 +187,7 @@ export function createEditorModel(bridge: HostBridge) {
     return uiSend;
   }
   return {
-    selection, setView, setSelectedLayers, reportLayout,
+    actions, selection, setView, setSelectedLayers, reportLayout,
     subscribeUI(listener: (command: UICommand) => void) {
       uiListeners.add(listener); uiQueue.splice(0).forEach(listener);
       return () => { uiListeners.delete(listener); };
@@ -200,7 +203,7 @@ export function createEditorModel(bridge: HostBridge) {
       selection.select(selectionForKeys(state.projection, keys, 'preview', ids));
     },
     selectRanges(ranges: SourceRange[]) { if (state.projection) selection.select(selectionForRanges(state.projection, ranges)); },
-    dispose() { disposed = true; guard.invalidate(); unsubscribe(); bridge.dispose(); listeners.clear(); uiListeners.clear(); uiQueue.length = 0; },
+    dispose() { disposed = true; actions.dispose(); guard.invalidate(); unsubscribe(); bridge.dispose(); listeners.clear(); uiListeners.clear(); uiQueue.length = 0; },
   };
 }
 export type EditorModel = ReturnType<typeof createEditorModel>;

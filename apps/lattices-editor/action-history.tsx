@@ -11,7 +11,7 @@ export function usePageUndo(root:RefObject<HTMLElement|null>,enabled:boolean,onU
  useEffect(()=>{
   if(!enabled)return;
   const key=(event:KeyboardEvent)=>{
-   const page=root.current;
+   const page=root.current?.closest<HTMLElement>('.editor-root')??root.current;
    if(!page||page.closest('[hidden]')||document.visibilityState==='hidden'||!page.getClientRects().length||!isPageUndo(event))return;
    event.preventDefault();onUndo();
   };
