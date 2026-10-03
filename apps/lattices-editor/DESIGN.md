@@ -13,7 +13,7 @@ real bridge data and remain read-only.
 
 The v8 visual authority is the operator's specification and the inspected
 Talkie `workflow-detail.ts` detail-content, glance and composer patterns:
-restrained index, top-spaced UI title, two-column facts, an 820px reading
+restrained index, top-spaced UI title, windows table and waiting rules, an 820px reading
 measure and a bottom-anchored composer. This is not a return to the prior
 rounded-UI preset. `overview.css` defines the `.lv` palette and overrides the
 underlying `theme.css` kit mappings for both views; `editor.css` retains
@@ -78,12 +78,12 @@ font is not bundled.
 - Overview has a 212px scrolling index and an independently scrolling main
   region. The centered reading wrapper is at most 900px including 40px side
   padding, leaving an 820px content measure. Windows and Matched by form a
-  two-column summary above the Preview actions and panel shortcuts.
+  windows table and waiting rules above the Preview actions and panel shortcuts.
 - The layer composer sits at the bottom when content fits. Longer content
   scrolls normally; no content is clipped to preserve the composition.
 - At widths of 640px or less, including the 560px Overview Narrow target, the
   index becomes a compact layer picker. Content uses 24px side padding, the
-  summary becomes one column and Matched by is hidden. Source remains
+  display maps, preview stage and matching-rule column are hidden. Source remains
   reachable from Show source. Actions and the chat heading can wrap.
 - Overview and Workspace stay mounted and switch through `hidden`. The
   CodeMirror instance, panel mounts, current context and saved layout survive
@@ -141,14 +141,13 @@ building replacement composer, panel or source systems.
   fields (`app`, `title`, `url`, `path`, `group`) when available. Duplicate
   occurrences are explicit. Do not turn these configuration conditions into
   an invented explanation of the resolver's winning rule.
-- **Preview actions:** Preview layout opens Workspace Preview and selects that
-  layer's windows. Show source and View in Source open Workspace Source and
+- **Preview actions:** Preview layout opens a read-only Overview subview using native proposed frames. Show source and View in Source open Workspace Source and
   select the layer's entry keys, preserving all ranges, including unmatched
   rules. The Add to this page buttons also open Workspace panels; they do not
   create configuration or new Overview content. Open Workspace preserves the
   saved panel arrangement.
-- **No thumbnail:** the bridge provides no frame geometry. Explain inspection
-  in text; do not fabricate a spatial layout preview, screenshot or placement.
+- **Optional geometry:** draw only native display/current/proposed frames. Omit
+  drawings without geometry and show unavailable preview when no targets exist.
 - **Layer composer:** the real `createAgentComposer` shows one layer context
   item with its actual window count. Input/send and the context item are
   disabled. “Answers arrive in a later version” states the limitation. No
@@ -226,3 +225,16 @@ Only actual index selection uses the raised background. Hover changes ink, not
 the background; host selection updates clear focus on a now-unselected index
 button. A browser regression keeps the pointer over the previous selection and
 verifies its background is transparent and stale focus is removed.
+
+## Arrangement provenance and states
+
+Main uses a 236×112 scaled display map beside the 28px system UI heading,
+a window table and separate waiting rules. Empty layers have an all-grey map,
+IDLE facts, a grey chip and disabled Preview. Unassigned uses white geometry
+and display locations. The preview heading is 24px/600 and its stage conserves
+display scale. Only live current positions are Now; historical positions retain
+their provenance, and missing destinations never mean Stays. All rendering is
+read-only. Narrow widths keep text moves and a fade above the pinned composer.
+No empty Try heading exists in Overview; Workspace Try has three suggestions.
+The index supports arrow movement and Enter to Workspace. The shared selection
+remains authoritative across pages. No serif or ChatAnswer is present.

@@ -48,3 +48,14 @@ local workflow-detail.ts/style.css, not against unseen reference pixels.
 `workspace-chat-290.png` and `workspace-chat-290-scrolled.png` show the same
 roughly 290px Chat panel before/after scrolling its Try/context region.
 Run `bun apps/lattices-editor/short-height-check.ts` after the development build.
+
+Arrangement pass (synthetic host, actual fixture frame geometry):
+- pass2-overview-1280.png
+- pass2-empty-1280.png
+- pass2-unassigned-1280.png
+- pass2-preview-1280.png
+- pass2-overview-560.png
+
+Captured by `bun apps/lattices-editor/pass2-check.ts` after the development build.
+The native app was not launched. Requested canvas board exports were unavailable;
+these are implementation evidence, not a claim of pixel-matched reproduction.
