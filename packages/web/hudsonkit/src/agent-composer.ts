@@ -38,6 +38,8 @@ export interface AgentComposerState {
   steerSupported?: boolean;
   canSend?: boolean;
   attachments?: readonly AgentComposerAttachment[];
+  /** Keep context actions available while the composer input is disabled. */
+  contextActionsEnabled?: boolean;
   contextItems?: readonly AgentComposerContextItem[];
   /** Host-owned capture state. Omit when dictation is unavailable. */
   voice?: AgentComposerVoiceState;
@@ -339,7 +341,8 @@ export function createAgentComposer(
         context.type = 'button';
         context.textContent = item.label;
         context.title = item.title ?? item.label;
-        context.disabled = disabled || Boolean(item.disabled);
+        context.setAttribute('aria-label', item.title ?? item.label);
+        context.disabled = (disabled && !state.contextActionsEnabled) || Boolean(item.disabled);
         context.dataset.itemDisabled = item.disabled ? 'true' : 'false';
         context.dataset.hkContextItem = item.id;
         context.addEventListener('click', () => options.onContextAction?.(item));
@@ -347,7 +350,7 @@ export function createAgentComposer(
       }
     }
     leadingTools.querySelectorAll<HTMLButtonElement>('[data-hk-context-item]').forEach((context) => {
-      context.disabled = disabled || context.dataset.itemDisabled === 'true';
+      context.disabled = (disabled && !state.contextActionsEnabled) || context.dataset.itemDisabled === 'true';
     });
     if (next.status !== undefined) {
       status.textContent = next.status ?? '';

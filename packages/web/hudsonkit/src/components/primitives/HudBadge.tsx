@@ -23,7 +23,7 @@ export function HudBadge({
   return (
     <span className={[
       'inline-flex items-center gap-1 rounded-full border font-mono uppercase',
-      tc.border, tc.bg, tc.text,
+      tc.border, tc.bg, tone === 'accent' ? 'text-accent' : tc.text,
       isCompact
         ? 'px-1.5 py-0 text-[8px] tracking-[0.1em]'
         : 'px-2 py-0.5 text-[9px] tracking-[0.12em]',

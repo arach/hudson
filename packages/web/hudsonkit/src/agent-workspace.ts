@@ -359,6 +359,6 @@ export function createAgentWorkspace(
     focusPanel: peerLayout.focusPanel,
     movePanel: peerLayout.movePanel,
     update,
-    destroy: () => root.remove(),
+    destroy: () => { peerLayout.destroy(); root.remove(); },
   };
 }
