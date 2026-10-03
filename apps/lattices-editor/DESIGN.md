@@ -228,13 +228,35 @@ verifies its background is transparent and stale focus is removed.
 
 ## Arrangement provenance and states
 
-Main uses a 236×112 scaled display map beside the 28px system UI heading,
+Main uses a larger Where it is now card below the 28px system UI heading,
 a window table and separate waiting rules. Empty layers have an all-grey map,
 IDLE facts, a grey chip and disabled Preview. Unassigned uses white geometry
 and display locations. The preview heading is 24px/600 and its stage conserves
 display scale. Only live current positions are Now; historical positions retain
-their provenance, and missing destinations never mean Stays. All rendering is
+their provenance in the text list and are omitted from the Now drawing; missing destinations never mean Stays. All rendering is
 read-only. Narrow widths keep text moves and a fade above the pinned composer.
 No empty Try heading exists in Overview; Workspace Try has three suggestions.
 The index supports arrow movement and Enter to Workspace. The shared selection
 remains authoritative across pages. No serif or ChatAnswer is present.
+
+## Layers polish direction (v10)
+
+Preserve behavior and the frozen bridge. Replace the small hero map with a
+Where it is now card. Displays retain relative physical size and window-local
+coordinates, but their illustrated bottoms align. The main bezel has an emerald
+ring; lit windows contrast with dim context windows. Add a genuine Now/Would go
+view toggle; it never changes native state and cannot choose an absent target.
+Waiting headings and rows derive from one materialized list. Keep UI headings,
+mono data, stable panel mounts and the pinned composer. Add page-light, emerald,
+grain and card-depth tokens shared by both views. Reference-board export has
+been requested; do not claim a pixel match without the exports.
+
+Polish tokens: page `#121416`; `--em #34d399`, `--em-deep #10b981`,
+`--em-text #8ae6bf`; grain opacity `.045`; shared card inset highlight `.06`
+and deep downward shadow. Display illustration uses a maximum `.078` scale,
+shrinking to fit while preserving width/height ratios; it does not rewrite
+global frames. No targets keeps Now with Would go disabled. At narrow widths
+the toggle hides with the stage, while the labelled text moves remain.
+Bounded review identified provenance and narrow-toggle defects; both were
+corrected and the reviewer scored both resolved. Board fidelity remains
+unverified because PolishLayer/PolishPreview exports have not arrived.

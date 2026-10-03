@@ -65,7 +65,7 @@ claimed to pixel-match unseen boards. Independent review found no must-fix.
 
 `bun run build:lattices-editor` passed. Editor and kit typechecks passed.
 Scoped lint passed (only the existing missing-pages advisory). Unit tests:
-**40 passed, 0 failed, 166 assertions**. Browser checks passed at 1280×820 and
+**43 passed, 0 failed, 181 assertions**. Browser checks passed at 1280×820 and
 640×820 in standalone and host modes, including commands/state, chrome gating,
 header metadata, stable Source through layout and recovery, and narrow ordering.
 The full HudsonKit package build also passed.
@@ -99,7 +99,7 @@ separate. No push, merge or PR.
 
 ## Short-height checks
 
-Overview keeps the composer visible at 1280×650, 1280×820 and 560×650; only the reading content scrolls. Workspace keeps its full input visible in a 290px Chat panel while context and Try content scroll independently. Browser regression checks and refreshed screenshots cover both. Build, typecheck, lint and all 40 unit tests pass.
+Overview keeps the composer visible at 1280×650, 1280×820 and 560×650; only the reading content scrolls. Workspace keeps its full input visible in a 290px Chat panel while context and Try content scroll independently. Browser regression checks and refreshed screenshots cover both. Build, typecheck, lint and all 43 unit tests pass.
 
 ## Shared layer selection
 
@@ -116,11 +116,29 @@ before stopping desktop interaction. No pixel-match claim is made. The written
 brief and current register were checked; bounded review found no must-fix
 geometry/provenance or screenshot issues. ChatAnswer was not implemented.
 
+## Polish v10
+
+Built on origin/main 239b3243 in feat/layers-polish. Shared surface light, grain,
+emerald tokens and card depth; bottom-aligned scaled displays with bezel/glass
+and live-only lit windows; rule chips and counts; materialized Waiting rows.
+Now/Would go is read-only and sends no bridge requests. Without targets it
+stays on Now and disables Would go; narrow views hide the toggle with the
+stage. Historical geometry remains labelled in text, not drawn as Now.
+
+Evidence: polish-layer-1280.png, polish-layer-560.png,
+polish-layer-waiting-1280.png, polish-preview-now-1280.png,
+polish-preview-would-go-1280.png. Full browser suite passes, including pinned
+composers and disabled/unavailable preview. Native app was not launched.
+
+PolishLayer/PolishPreview board exports are still unavailable. Coordinator
+requested them from the operator; implementation follows the written spec.
+No pixel-match claim. Bounded reviewer scored both identified fixes resolved.
+
 ## SHA-256
 
 ```text
-4ec2fa012a6479509b00a6fc7787de05ad2691c85817161df14c312a575a467a  editor.css
-d98536f4e0fb748d5821a943222eeefbbc74dcce18803ecd2100b932e661e330  editor.js
+0864fadfbadb48504866f1fb57f7908caa47ea171207543bc5f88caa3ac08d59  editor.css
+43c59c2322f00f1c1433cf47fc375a876f8a7f579ba084081c76d2eff04e7650  editor.js
 6ceb52eedcfc21964230e4e1793d4e9703b7d76393b8a3808229b6c30c19c208  index.html
 403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b  jetbrains-mono-LICENSE.txt
 14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  jetbrains-mono-latin-400-normal.woff2
