@@ -1,14 +1,16 @@
+import {createActClient} from './act-wire';
+import {validLayout, type ShouldBeLayout} from "./should-be-data";
 import { validFrame, type Frame, type Display, type LayoutPreview } from './geometry';
 import { isLayerIds, isUICommand, type UICommand, type EditorView, type layoutState } from './ui';
 import { createRevisionGuard, HostBridgeError, type HostBridge, type HostEnvelope } from '../../packages/web/hudsonkit/src/editor/host-bridge';
 import { createSubjectStore, type EditorSubject, type EditorSelection, type SourceRange } from '../../packages/web/hudsonkit/src/editor/subject-store';
 export interface Entry { key: string; layerId: string; canonical: string; ranges: SourceRange[]; ambiguous: boolean }
 export interface PreviewRow { frame?:Frame|null; displayId?:string|null; matchedRule?:number|null; frameSource?:'live'|'lastKnown'|'savedHome'|'unavailable'; id: string; windowId: number; app: string; title: string; layerId: string | null; entryKeys: string[] }
-export interface Projection { displays?:Display[]; snapshotId: string; groups: { id: string; label: string; preview?:LayoutPreview; rows: PreviewRow[] }[]; entries: Entry[] }
+export interface Projection { displays?:Display[]; snapshotId: string; groups: { id: string; label: string; preview?:LayoutPreview; layout?:ShouldBeLayout; rows: PreviewRow[] }[]; entries: Entry[] }
 interface SubjectRead { subject: EditorSubject; source: { text: string; language: 'json' } }
 interface Capabilities { selectedLayerIds?: string[]; chrome?: 'host'; readOnly: boolean; methods: string[]; subject: Omit<EditorSubject, 'revision'> & { revision: string | null }; terminal: boolean }
 export interface EditorState {
-  selectedLayerIds: string[]; view: EditorView; readAt: number | null;
+  methods:string[]; selectedLayerIds: string[]; view: EditorView; readAt: number | null;
   chrome: 'host' | 'standalone'; uiError: string | null;
   status: 'loading' | 'ready' | 'unavailable' | 'error'; error: string | null;
   document: SubjectRead | null; projection: Projection | null;
@@ -44,12 +46,19 @@ export function validateProjection(p: unknown, text: string): asserts p is Proje
   for (const g of p.groups) {
     if (!record(g) || typeof g.id !== 'string' || groups.has(g.id) || typeof g.label !== 'string' || !Array.isArray(g.rows)) throw new Error('Invalid preview group');
     groups.add(g.id);
+    if(g.layout!==undefined&&!validLayout(g.layout)) throw new Error("Invalid layer layout");
     for (const r of g.rows) {
       if (!record(r) || typeof r.id !== 'string' || rows.has(r.id) || !Number.isInteger(r.windowId) ||
         typeof r.app !== 'string' || typeof r.title !== 'string' || !(r.layerId === null || typeof r.layerId === 'string') ||
         !Array.isArray(r.entryKeys) || r.entryKeys.some(k => typeof k !== 'string' || !keys.has(k))) throw new Error('Invalid preview row');
       if (r.frame!=null&&!validFrame(r.frame) || r.displayId!=null&&typeof r.displayId!=='string' || r.matchedRule!=null&&(!Number.isInteger(r.matchedRule)||(r.matchedRule as number)<0) || r.frameSource!==undefined&&!['live','lastKnown','savedHome','unavailable'].includes(String(r.frameSource))) throw new Error('Invalid row geometry');
       rows.add(r.id);
+    }
+    if(g.layout!==undefined&&validLayout(g.layout)) {
+      const rawEntries=p.entries.filter(e=>e.layerId===g.id).flatMap(e=>e.ranges.map((r:{from:number})=>({key:e.key,from:r.from}))).sort((a,b)=>a.from-b.from);
+      const seen=new Set<number>();
+      for(const t of [...g.layout.openTargets,...g.layout.allTargets]) if(rawEntries[t.entryIndex]?.key!==t.entryKey) throw new Error('Invalid layout entry identity');
+      for(const t of g.layout.openTargets) {if(seen.has(t.windowId)||!g.rows.some((r:PreviewRow)=>r.windowId===t.windowId&&r.entryKeys.includes(t.entryKey))) throw new Error('Invalid layout window identity');seen.add(t.windowId);}
     }
     if (g.preview!==undefined && (!record(g.preview)||typeof g.preview.layout!=='string'||typeof g.preview.displayId!=='string'||!Array.isArray(g.preview.frames)||g.preview.frames.some(f=>!record(f)||!Number.isInteger(f.windowId)||!(g.rows as Record<string,unknown>[]).some((r:Record<string,unknown>)=>r.windowId===f.windowId)||!validFrame(f.frame)))) throw new Error('Invalid proposed geometry');
   }
@@ -69,7 +78,7 @@ export function selectionForRanges(projection: Projection, ranges: SourceRange[]
 }
 export function createEditorModel(bridge: HostBridge) {
   const selection = createSubjectStore();
-  let state: EditorState = { selectedLayerIds: [], view: 'overview', readAt: null, chrome: 'standalone', uiError: null, status: 'loading', error: null, document: null, projection: null, history: [] };
+  let state: EditorState = { methods:[], selectedLayerIds: [], view: 'overview', readAt: null, chrome: 'standalone', uiError: null, status: 'loading', error: null, document: null, projection: null, history: [] };
   const uiListeners = new Set<(command: UICommand) => void>();
   const uiQueue: UICommand[] = [];
   let uiSend = Promise.resolve();
@@ -78,7 +87,8 @@ export function createEditorModel(bridge: HostBridge) {
   const guard = createRevisionGuard();
   let subjectId: string | null = null, disposed = false, refreshing = false, pending = false;
   let subscribed = false;
-  const emit = (patch: Partial<EditorState>) => { state = { ...state, ...patch }; listeners.forEach(fn => fn()); };
+  const actions=createActClient(bridge,()=>({subjectId,revision:state.document?.subject.revision??null}),()=>{void refresh();});
+  const emit = (patch: Partial<EditorState>) => { state = { ...state, ...patch }; actions.controller.setContext(JSON.stringify([subjectId,state.document?.subject.revision,state.projection?.snapshotId,state.selectedLayerIds,state.view]));listeners.forEach(fn => fn()); };
   async function refresh() {
     if (disposed || !subjectId || !subscribed) return;
     pending = true;
@@ -134,10 +144,11 @@ export function createEditorModel(bridge: HostBridge) {
       try {
         const capabilities = await bridge.request<Capabilities>('capabilities', null, null);
         const c = capabilities.payload;
-        if (!record(c) || !isDiscoverySubject(c.subject) || !Array.isArray(c.methods) || c.readOnly !== true ||
+        if (!record(c) || !isDiscoverySubject(c.subject) || !Array.isArray(c.methods) || typeof c.readOnly !== 'boolean' ||
           !['subject.read', 'preview.project', 'events.subscribe'].every(m => c.methods.includes(m)) ||
           capabilities.subjectId !== c.subject.id || capabilities.revision !== c.subject.revision) throw new HostBridgeError('unsupported', 'Required editor capability missing');
         subjectId = c.subject.id;
+        actions.setMethods(c.methods);emit({methods:c.methods});
         let view: EditorView = 'overview';
         try { if (globalThis.localStorage?.getItem(`lattices.editor.view.v1:${subjectId}`) === 'workspace') view = 'workspace'; } catch { /* Unavailable storage keeps the default. */ }
         let selectedLayerIds: string[] = [];
@@ -176,7 +187,7 @@ export function createEditorModel(bridge: HostBridge) {
     return uiSend;
   }
   return {
-    selection, setView, setSelectedLayers, reportLayout,
+    actions, selection, setView, setSelectedLayers, reportLayout,
     subscribeUI(listener: (command: UICommand) => void) {
       uiListeners.add(listener); uiQueue.splice(0).forEach(listener);
       return () => { uiListeners.delete(listener); };
@@ -192,7 +203,7 @@ export function createEditorModel(bridge: HostBridge) {
       selection.select(selectionForKeys(state.projection, keys, 'preview', ids));
     },
     selectRanges(ranges: SourceRange[]) { if (state.projection) selection.select(selectionForRanges(state.projection, ranges)); },
-    dispose() { disposed = true; guard.invalidate(); unsubscribe(); bridge.dispose(); listeners.clear(); uiListeners.clear(); uiQueue.length = 0; },
+    dispose() { disposed = true; actions.dispose(); guard.invalidate(); unsubscribe(); bridge.dispose(); listeners.clear(); uiListeners.clear(); uiQueue.length = 0; },
   };
 }
 export type EditorModel = ReturnType<typeof createEditorModel>;

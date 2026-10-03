@@ -228,13 +228,114 @@ verifies its background is transparent and stale focus is removed.
 
 ## Arrangement provenance and states
 
-Main uses a 236×112 scaled display map beside the 28px system UI heading,
+Main uses a larger Where it is now card below the 28px system UI heading,
 a window table and separate waiting rules. Empty layers have an all-grey map,
 IDLE facts, a grey chip and disabled Preview. Unassigned uses white geometry
 and display locations. The preview heading is 24px/600 and its stage conserves
 display scale. Only live current positions are Now; historical positions retain
-their provenance, and missing destinations never mean Stays. All rendering is
+their provenance in the text list and are omitted from the Now drawing; missing destinations never mean Stays. All rendering is
 read-only. Narrow widths keep text moves and a fade above the pinned composer.
 No empty Try heading exists in Overview; Workspace Try has three suggestions.
 The index supports arrow movement and Enter to Workspace. The shared selection
 remains authoritative across pages. No serif or ChatAnswer is present.
+
+## Layers polish direction (v10)
+
+Preserve behavior and the frozen bridge. Replace the small hero map with a
+Where it is now card. Displays retain relative physical size and window-local
+coordinates, but their illustrated bottoms align. The main bezel has an emerald
+ring; lit windows contrast with dim context windows. Add a genuine Now/Would go
+view toggle; it never changes native state and cannot choose an absent target.
+Waiting headings and rows derive from one materialized list. Keep UI headings,
+mono data, stable panel mounts and the pinned composer. Add page-light, emerald,
+grain and card-depth tokens shared by both views. Reference-board export has
+been requested; do not claim a pixel match without the exports.
+
+Polish tokens: page `#121416`; `--em #34d399`, `--em-deep #10b981`,
+`--em-text #8ae6bf`; grain opacity `.045`; shared card inset highlight `.06`
+and deep downward shadow. Display illustration uses a maximum `.078` scale,
+shrinking to fit while preserving width/height ratios; it does not rewrite
+global frames. No targets keeps Now with Would go disabled. At narrow widths
+the toggle hides with the stage, while the labelled text moves remain.
+Bounded review identified provenance and narrow-toggle defects; both were
+corrected and the reviewer scored both resolved. Board fidelity remains
+unverified because PolishLayer/PolishPreview exports have not arrived.
+
+## Should be addendum (v11, frozen wire)
+
+Replace the separate preview page with one Layout card and unified target table.
+Should be is the default for an available configured layout; Now uses identical
+main-display scale. The main display keeps true aspect, lane names/widths sit
+above it, and current-position outlines can be switched off. Include not open
+switches to the complete target set; unopened targets are dashed/hatched and
+never invented. Native Moves/Stays/wontMove classifications and reasons are
+authoritative. Current drawings are live-only. Kind none has only Now and an
+explicit no-arrangement explanation. This is visualization only, with no native
+mutation messages. No serif. The frozen wire shape is documented in
+editor-read-bridge-v1.md; local board exports were opened and compared.
+
+### Should be implementation and reference comparison
+
+The wire is frozen against native `EditorLayout.swift` at 1dd81b99. Layout is
+an inline card, initially Should be; Now uses the same display scale. No separate
+Preview page remains. Native absolute target frames and native ruler labels
+are used without recalculating arrangements. All-entry mode is explicitly an
+illustrative reservation, never a claim that an unopened window moves.
+
+Compared with local ShouldBe/ShouldBeAll/ShouldBeNow HTML boards: retain the
+700px display, emerald glass, dashed current outlines, hatched unopened slots,
+compact segmented control, ruler and unified rule table. Native app chrome is
+outside this bundle. The pinned chat remains from the approved earlier pass;
+therefore shorter viewports scroll the rule table rather than clipping chat.
+Mock geometry and counts differ intentionally from the illustrative board.
+
+## Act pass: on demand, confirmed
+
+Layout inspection stays passive. Explicit Gather/Open buttons first request a
+native plan, then present its actual scope in a cancellable confirmation
+popover. Only its second explicit confirmation sends the plan ID back. Layer,
+revision or view changes invalidate pending confirmations. Replies never trigger
+actions. No auto-retry of mutations. Receipts show native outcomes without
+optimistically marking positions In place; the refreshed layout remains truth.
+
+The existing composer becomes live only when the host advertises support.
+Layer context includes rule/window counts; messages and suggestions sit above
+it. Suggestions use exactly the same plan/confirm path as header/row actions.
+Repeated native state/result events must preserve referential identity when
+unchanged. Match the local ActLayer/ActConfirm/ActDone boards, retaining the
+emerald register and neutral failure copy. Native wire agreement precedes code.
+
+### Undo addendum
+
+The receipt puts Undo before Show all windows and Details. History is a native
+read-only newest-first list; only its explicit newestUndoableActionId enables
+Undo. The web never reconstructs frames or chooses older actions. Undo consumes
+the local latest ID immediately and waits for an authoritative history refresh
+before enabling another operation. Native receipt text preserves restored and
+skipped reasons, including “Opened apps stay open”. Cmd-Z is page-scoped and
+never captures undo from the composer, other inputs or CodeMirror. No real
+Gather/Open/Undo is used in development verification.
+
+Preparation status (before frozen v1): confirmation/chat/history surfaces and safety controllers are prepared,
+not connected to native operations. Exact envelope/result/history and assistant
+DTO agreement is still pending with the native builder. Do not import these
+preparation commits as a completed Act release; production dist is unchanged.
+
+### Act frozen-v1 implementation
+
+Implemented against the coordinator-approved EDITOR-ACT-WIRE.md, copied to
+`docs/proposals/editor-act-wire-v1.md`. Terminal correlated replies and duplicate
+`action.result` events share one receipt keyed by actionId. Assistant state uses
+structural equality, per-layer caches and generation checks; system messages
+are not rendered. No response dispatches an action or executes suggestion text.
+
+The native plan supplies the confirmation explanation, opening descriptions,
+shortcut and known counts. Unknown putAwayCount is omitted. No shortcut is
+invented before the host supplies one. Canonical source provides only provisional
+row hints; the displayed native plan controls the actual operation. Open is
+launch-only. Source stays read-only; the standalone Read only badge is removed.
+
+Undo requires both advertised action.undo and an authoritative newest ID. History
+refreshes after each terminal result. Page Cmd-Z also works in Workspace while
+preserving all text editors' own undo. Missing action capabilities retain passive
+inspection; there is no fallback mutation path. Mock fixtures are dev-only.

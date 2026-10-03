@@ -59,3 +59,12 @@ Arrangement pass (synthetic host, actual fixture frame geometry):
 Captured by `bun apps/lattices-editor/pass2-check.ts` after the development build.
 The native app was not launched. Requested canvas board exports were unavailable;
 these are implementation evidence, not a claim of pixel-matched reproduction.
+
+Polish v10 (new branch from 239b3243):
+- polish-layer-1280.png and polish-layer-560.png
+- polish-layer-waiting-1280.png (scrollable reading content; composer pinned)
+- polish-preview-now-1280.png
+- polish-preview-would-go-1280.png
+
+PolishLayer/PolishPreview source exports were unavailable. These document the
+written specification implementation, not reference-board fidelity approval.

@@ -6,7 +6,7 @@ export function overviewFacts(projection: Projection, id: string) {
     let raw: Record<string, unknown> = {};
     try { const value: unknown = JSON.parse(entry.canonical); if (value && typeof value === 'object' && !Array.isArray(value)) raw = value as Record<string, unknown>; } catch { /* Host-defined content may not be JSON. */ }
     const match = raw.match && typeof raw.match === 'object' ? raw.match as Record<string, unknown> : raw;
-    const app = typeof match.app === 'string' ? match.app : undefined;
+    const app = [raw.app,match.appEquals,match.app].find((value):value is string=>typeof value==='string'&&value.length>0);
     const conditions = ['title','titleContains','titleEquals','titleRegex','url','path','group'].flatMap(key => typeof match[key] === 'string' ? [`${key==='title'||key==='titleContains'?'title has':key==='titleEquals'?'title is':key}: ${JSON.stringify(match[key])}`] : []);
     return { key:entry.key, app, text: conditions.join(' · ') || (app ? `App is ${app}` : entry.canonical),
       open: rows.filter(r => r.entryKeys.includes(entry.key)).length,
@@ -36,4 +36,9 @@ export function overviewSelectionFacts(projection: Projection, ids: string[]) {
 }
 export function toggleLayer(ids: string[], id: string, additive: boolean) {
   return additive ? ids.includes(id) ? ids.filter(value=>value!==id) : [...ids,id] : [id];
+}
+
+/** Render the heading and rows from the same list: never leave an empty Waiting section. */
+export function waitingRules(rules:ReturnType<typeof overviewFacts>['rules']) {
+ return rules.filter(rule=>rule.open===0).flatMap(rule=>Array.from({length:Math.max(0,Math.floor(rule.occurrences))},(_,occurrence)=>({...rule,rowKey:`${rule.key}:${occurrence}`})));
 }

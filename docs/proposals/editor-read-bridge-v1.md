@@ -193,3 +193,29 @@ Missing preview/frames means unavailable, never current-as-proposed. The web
 labels only live frames Now and only compares live/proposed pairs as Moves or
 Stays. Other provenance is Last known, Saved position, or Position (legacy).
 Unavailable frames are not drawn. No mutation or arrangement operation is added.
+
+## Should be layout (native 1dd81b99, frozen)
+
+Optional `groups[].layout` is read-only design data, not an execution request.
+`kind` is `auto|columns|master-stack|none`; missing layout means unavailable,
+not none. `displayId` and global `visibleFrame:{x,y,w,h}` identify the main
+arrangement area. `lanes.open/all:[{x,w,label}]` are normalized native-engine
+spans. The web must not recompute lane widths or layout slots.
+
+`openTargets` has one item per held window:
+`{windowId,entryIndex,entryKey,ambiguous?,unitFrame,frame,displayId,status,reason?}`.
+Status is `moves|stays|wontMove`; every wontMove has a reason. `frame` is absolute
+global top-left geometry. `unitFrame` is normalized to the destination's visible
+frame, not its full display bounds. Unknown explicit targets can have null or
+omitted geometry and null displayId. Never guess their positions.
+
+`allTargets` has one illustrative reservation per source entry:
+`{entryIndex,entryKey,ambiguous?,unitFrame,frame,displayId}`. It has no movement
+status; never copy open-plan statuses onto reservations. Multiple held windows
+can share one entry. `skipped:[{entryIndex,entryKey?,reason}]` explains missing app
+names, unresolved placements, or ambiguous duplicates. Open duplicate targets
+remain marked ambiguous; all-entry duplicate reservations are omitted.
+
+Only `frameSource:live` current frames appear in Now or dashed overlays.
+Toggles change web presentation only. Existing eligible-only `preview` remains
+wire-compatible but no longer opens a separate page.
