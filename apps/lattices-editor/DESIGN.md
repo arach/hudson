@@ -207,3 +207,15 @@ Only the reading content above it scrolls; the picker remains outside that
 scroll region. Workspace Chat similarly reserves the full composer and scrolls
 its context/intro/Try region instead. Panel and CodeViewer mounts are unchanged.
 Verified at 1280×650, 1280×820 and 560×650, plus a roughly 290px grid Chat.
+
+## Shared layer index selection
+
+The host owns persisted `selectedLayerIds`; capabilities seeds the web index
+before its initial full UI state. Web storage is used only in standalone mode.
+All windows clears selection; ordinary clicks replace it and Cmd/Ctrl-click
+adds/removes layers in selection order. Single-layer detail retains its existing
+layout. All/multi-selection use the same reading surface with aggregate windows
+and rules from the projection; the narrow picker can replace a multi-selection.
+The Unassigned row keeps its actual projection identity. Group counts come from
+host rows, not a second membership resolver. Index selection does not select
+windows, switch pages, apply layouts or mutate configuration.

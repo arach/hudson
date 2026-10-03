@@ -63,7 +63,7 @@ claimed to pixel-match unseen boards. Independent review found no must-fix.
 
 `bun run build:lattices-editor` passed. Editor and kit typechecks passed.
 Scoped lint passed (only the existing missing-pages advisory). Unit tests:
-**34 passed, 0 failed, 130 assertions**. Browser checks passed at 1280×820 and
+**38 passed, 0 failed, 152 assertions**. Browser checks passed at 1280×820 and
 640×820 in standalone and host modes, including commands/state, chrome gating,
 header metadata, stable Source through layout and recovery, and narrow ordering.
 The full HudsonKit package build also passed.
@@ -98,13 +98,17 @@ separate. No push, merge or PR.
 
 ## Short-height checks
 
-Overview keeps the composer visible at 1280×650, 1280×820 and 560×650; only the reading content scrolls. Workspace keeps its full input visible in a 290px Chat panel while context and Try content scroll independently. Browser regression checks and refreshed screenshots cover both. Build, typecheck, lint and all 34 unit tests pass.
+Overview keeps the composer visible at 1280×650, 1280×820 and 560×650; only the reading content scrolls. Workspace keeps its full input visible in a 290px Chat panel while context and Try content scroll independently. Browser regression checks and refreshed screenshots cover both. Build, typecheck, lint and all 38 unit tests pass.
+
+## Shared layer selection
+
+Native capabilities seeds the ordered selectedLayerIds. All windows is []; Cmd/Ctrl-click toggles index rows; native commands update the index without switching views or changing row/source selection. Every ui.state includes full layout and selectedLayerIds. Standalone selection persists locally. Counts come directly from projection groups. Evidence: desk-all-1280.png, desk-layer-1280.png, desk-multi-1280.png. Pass 2 geometry remains cancelled.
 
 ## SHA-256
 
 ```text
 4055bfa32f008a52c684d2c05810adf1000ce98462d594fbf04fc28fc58919b7  editor.css
-55572e7e240ed22f96b6a052f79138bd0d9ac81987da82d597de939f1ce0f00e  editor.js
+947045cce1a3fc6a35c0f1c09a19ad0ee5c940ca6a26102cc36f16a87ae063e6  editor.js
 6ceb52eedcfc21964230e4e1793d4e9703b7d76393b8a3808229b6c30c19c208  index.html
 403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b  jetbrains-mono-LICENSE.txt
 14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  jetbrains-mono-latin-400-normal.woff2

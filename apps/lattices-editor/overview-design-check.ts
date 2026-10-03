@@ -16,6 +16,20 @@ try {
   const headingStyle=()=>page.locator(".layer-reading h1").evaluate(el=>{const s=getComputedStyle(el);return {family:s.fontFamily,size:s.fontSize,weight:s.fontWeight,line:s.lineHeight,tracking:s.letterSpacing};});
   const heading=await headingStyle();
   assert(heading.size==="28px"&&heading.weight==="600"&&heading.family.includes("SF Pro Display")&&Math.abs(parseFloat(heading.line)-30.8)<.1&&Math.abs(parseFloat(heading.tracking)+.42)<.01,"Overview uses specified UI heading typography");
+  assert(await page.locator(".layer-reading h1").innerText()==="All windows","Missing host seed defaults All windows");
+  if(width===1280) {
+    await page.screenshot({path:import.meta.dir+"/design-evidence/desk-all-1280.png"});
+    await page.locator(".layer-index nav button").first().click();
+    await page.getByRole("heading",{name:"Build 1",exact:true}).waitFor();
+    await page.screenshot({path:import.meta.dir+"/design-evidence/desk-layer-1280.png"});
+    await page.locator(".layer-index nav button").nth(1).click({modifiers:["Meta"]});
+    await page.getByRole("heading",{name:"2 layers",exact:true}).waitFor();
+    assert(await page.locator(".layer-index nav button[aria-pressed=true]").count()===2,"Cmd-click keeps both layers");
+    await page.waitForFunction(()=>JSON.stringify((editorMock.uiStates.at(-1) as {selectedLayerIds:string[]}).selectedLayerIds)===JSON.stringify(["build","overview:0"]));
+    await page.screenshot({path:import.meta.dir+"/design-evidence/desk-multi-1280.png"});
+  }
+  await page.evaluate(()=>editorMock.command({command:"selectLayers",value:["build"]}));
+  await page.getByRole("heading",{name:"Build 1",exact:true}).waitFor();
   const editor=await page.locator('.cm-editor').elementHandle();
   assert(await page.locator('.layer-picker').isVisible()===(width===560),'Narrow picker replaces index');
   assert(await page.locator('.matched-by').isVisible()===(width===1280),'Narrow hides match details');

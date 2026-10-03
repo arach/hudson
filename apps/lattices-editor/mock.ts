@@ -1,6 +1,6 @@
 import type { HostEnvelope, HostTransport } from '../../packages/web/hudsonkit/src/editor/host-bridge';
 /** Synthetic development fixture. No membership resolver or production fallback. */
-export function createMockTransport(options: { rich?: boolean; overview?: boolean; chrome?: 'host'; unreadable?: boolean } = {}) {
+export function createMockTransport(options: { selectedLayerIds?: string[]; rich?: boolean; overview?: boolean; chrome?: 'host'; unreadable?: boolean } = {}) {
   let version = 1, inventory = 1, unreadable = options.unreadable ?? false, staleOnce = false;
   const listeners = new Set<(event: unknown) => void>();
   const calls: string[] = [];
@@ -61,7 +61,7 @@ export function createMockTransport(options: { rich?: boolean; overview?: boolea
       const error = (code: string, message: string) => result({ code, message }, 'error');
       switch (message.kind) {
         case 'ui.state': uiStates.push(message.payload); return { ...result({}), revision: null };
-        case 'capabilities': return result({ chrome: options.chrome, readOnly: true, methods: ['subject.read', 'preview.project', 'events.subscribe'], subject: subject(), terminal: false });
+        case 'capabilities': return result({ selectedLayerIds: options.selectedLayerIds, chrome: options.chrome, readOnly: true, methods: ['subject.read', 'preview.project', 'events.subscribe'], subject: subject(), terminal: false });
         case 'events.subscribe': return result({ subscriptionId: 'mock:subscription' });
         case 'subject.read': return unreadable ? error('unavailable', 'Synthetic workspace JSON is invalid.') : result({ subject: subject(), source: { text: fixture().text, language: 'json' } });
         case 'preview.project':

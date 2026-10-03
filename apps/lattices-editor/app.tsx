@@ -152,7 +152,7 @@ function Content() {
     {data.error && <div className="notice text-warning bg-warning/10" role="alert">Showing the last consistent view. {data.error} <button onClick={() => void model.retry()}>Retry</button></div>}
     {data.uiError && <div className="notice" role="alert">Layout controls could not sync. <button onClick={() => { if (shell.current) void model.reportLayout(layoutState(shell.current.getPanelLayout())); }}>Retry</button></div>}
     {storageNotice && <div className="notice" role="status">Layout could not be saved on this device.</div>}
-    <div className="overview-view" hidden={data.view !== 'overview'}><Overview projection={data.projection} readAt={data.readAt} onOpen={openWorkspace}/></div>
+    <div className="overview-view" hidden={data.view !== 'overview'}><Overview selectedLayerIds={data.selectedLayerIds} onSelectLayers={model.setSelectedLayers} projection={data.projection} readAt={data.readAt} onOpen={openWorkspace}/></div>
     <div className="workspace-view" hidden={data.view !== 'workspace'}><EditorPanels key={id} panels={panels} layout={persistence.getLayout()} onReady={controller => {
       uiUnsubscribe.current?.(); shell.current = controller;
       if (controller) {

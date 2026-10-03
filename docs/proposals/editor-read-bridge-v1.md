@@ -153,3 +153,25 @@ the saved layout, unmounts panels or destroys CodeViewer. A view command emits t
 new state after the shell is ready. Overview panel shortcuts switch to Workspace
 and enable that panel. Native title-bar actions can send an explicit view command
 before layout commands; layout commands alone do not change the selected view.
+
+### Shared layer selection
+
+`capabilities` may include `selectedLayerIds: string[]`. In host chrome this is
+native-owned persisted selection and is authoritative, including an empty array;
+missing/invalid seeds use `[]`, never stale web storage. Standalone mode persists
+its own selection by subject. IDs are ordered, unique projection group IDs.
+`[]` means All windows. Unassigned uses the actual projection group ID (which
+may have a collision suffix), never a hardcoded sentinel.
+
+`ui.command` accepts `{command:"selectLayers",value:string[]}`. It updates only
+index selection, without changing view, layout, row/source selection or windows.
+`ui.state` always includes `selectedLayerIds` alongside the complete view,
+arrangement, panels and sourceOpen payload. Web changes report the full state;
+identical selections are no-ops. Native must not echo identical state as commands.
+Deleted/unknown group IDs are discarded against the available projection;
+if none remain the selection becomes All windows. Initial state is emitted after
+capabilities seed and shell readiness. Counts are projection `groups[].rows.length`;
+All windows sums those counts. Ordinary index clicks replace selection,
+Cmd/Ctrl-click toggles in insertion order, All windows clears it.
+
+This extension adds no geometry fields or configuration mutation operations.

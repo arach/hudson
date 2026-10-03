@@ -28,3 +28,12 @@ test('matched-by counts come from entry keys, unmatched rules and explicit pin/d
  p.entries.push({key:'unmatched',layerId:'build',canonical:JSON.stringify({app:'Notes',title:'Draft',pins:[{wid:7}],display:1}),ranges:[{from:0,to:1}],ambiguous:false});
  const f=overviewFacts(p,'build');expect(f.rules.at(-1)?.open).toBe(0);expect(f.pinned).toBe(1);expect(f.displays).toEqual(['1']);expect(f.description).toContain('1 rule has no match');
 });
+
+test('All and multi-layer facts use projection counts; toggles preserve insertion order', async()=>{
+ const {overviewSelectionFacts,toggleLayer}=await import('./overview-data');const p=createMockTransport({rich:true,overview:true}).fixture().projection;
+ expect(overviewSelectionFacts(p,[]).rows.length).toBe(4);
+ expect(overviewSelectionFacts(p,['build','overview:0']).rows.length).toBe(3);
+ expect(toggleLayer(['build'],'overview:0',true)).toEqual(['build','overview:0']);
+ expect(toggleLayer(['build','overview:0'],'build',true)).toEqual(['overview:0']);
+ expect(toggleLayer(['build'],'unassigned',false)).toEqual(['unassigned']);
+});

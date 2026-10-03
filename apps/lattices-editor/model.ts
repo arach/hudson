@@ -1,13 +1,13 @@
-import { isUICommand, type UICommand, type EditorView, type layoutState } from './ui';
+import { isLayerIds, isUICommand, type UICommand, type EditorView, type layoutState } from './ui';
 import { createRevisionGuard, HostBridgeError, type HostBridge, type HostEnvelope } from '../../packages/web/hudsonkit/src/editor/host-bridge';
 import { createSubjectStore, type EditorSubject, type EditorSelection, type SourceRange } from '../../packages/web/hudsonkit/src/editor/subject-store';
 export interface Entry { key: string; layerId: string; canonical: string; ranges: SourceRange[]; ambiguous: boolean }
 export interface PreviewRow { id: string; windowId: number; app: string; title: string; layerId: string | null; entryKeys: string[] }
 export interface Projection { snapshotId: string; groups: { id: string; label: string; rows: PreviewRow[] }[]; entries: Entry[] }
 interface SubjectRead { subject: EditorSubject; source: { text: string; language: 'json' } }
-interface Capabilities { chrome?: 'host'; readOnly: boolean; methods: string[]; subject: Omit<EditorSubject, 'revision'> & { revision: string | null }; terminal: boolean }
+interface Capabilities { selectedLayerIds?: string[]; chrome?: 'host'; readOnly: boolean; methods: string[]; subject: Omit<EditorSubject, 'revision'> & { revision: string | null }; terminal: boolean }
 export interface EditorState {
-  view: EditorView; readAt: number | null;
+  selectedLayerIds: string[]; view: EditorView; readAt: number | null;
   chrome: 'host' | 'standalone'; uiError: string | null;
   status: 'loading' | 'ready' | 'unavailable' | 'error'; error: string | null;
   document: SubjectRead | null; projection: Projection | null;
@@ -65,7 +65,7 @@ export function selectionForRanges(projection: Projection, ranges: SourceRange[]
 }
 export function createEditorModel(bridge: HostBridge) {
   const selection = createSubjectStore();
-  let state: EditorState = { view: 'overview', readAt: null, chrome: 'standalone', uiError: null, status: 'loading', error: null, document: null, projection: null, history: [] };
+  let state: EditorState = { selectedLayerIds: [], view: 'overview', readAt: null, chrome: 'standalone', uiError: null, status: 'loading', error: null, document: null, projection: null, history: [] };
   const uiListeners = new Set<(command: UICommand) => void>();
   const uiQueue: UICommand[] = [];
   let uiSend = Promise.resolve();
@@ -98,6 +98,7 @@ export function createEditorModel(bridge: HostBridge) {
             previous.refs.filter(r => r.kind === 'lattices.entry').map(r => r.id), previous.origin,
             previous.refs.filter(r => r.kind === 'lattices.window').map(r => r.id)));
           emit({ readAt: Date.now(), document: read.payload, projection: projected.payload, status: 'ready', error: null });
+          setSelectedLayers(state.selectedLayerIds);
           staleRetries = 0;
         } catch (error) {
           if (disposed) break;
@@ -111,6 +112,7 @@ export function createEditorModel(bridge: HostBridge) {
   function receive(event: HostEnvelope) {
     if (event.kind === 'ui.command') {
       if (state.chrome !== 'host' || event.subjectId !== subjectId || !isUICommand(event.payload)) return;
+      if (event.payload.command === 'selectLayers') { setSelectedLayers(event.payload.value); return; }
       if (event.payload.command === 'view') { setView(event.payload.value); return; }
       if (uiListeners.size) uiListeners.forEach(fn => fn(event.payload as UICommand));
       else { uiQueue.push(event.payload); if (uiQueue.length > 32) uiQueue.shift(); }
@@ -134,7 +136,10 @@ export function createEditorModel(bridge: HostBridge) {
         subjectId = c.subject.id;
         let view: EditorView = 'overview';
         try { if (globalThis.localStorage?.getItem(`lattices.editor.view.v1:${subjectId}`) === 'workspace') view = 'workspace'; } catch { /* Unavailable storage keeps the default. */ }
-        emit({ view, chrome: c.chrome === 'host' ? 'host' : 'standalone' });
+        let selectedLayerIds: string[] = [];
+        if (c.chrome === 'host') { if (isLayerIds(c.selectedLayerIds)) selectedLayerIds = [...new Set(c.selectedLayerIds)]; }
+        else { try { const saved: unknown = JSON.parse(globalThis.localStorage?.getItem(`lattices.editor.layers.v1:${subjectId}`) ?? '[]'); if (isLayerIds(saved)) selectedLayerIds = [...new Set(saved)]; } catch { /* Invalid storage uses All windows. */ } }
+        emit({ selectedLayerIds, view, chrome: c.chrome === 'host' ? 'host' : 'standalone' });
         await bridge.request('events.subscribe', subjectId, null);
         if (disposed) return;
         subscribed = true;
@@ -148,8 +153,15 @@ export function createEditorModel(bridge: HostBridge) {
     try { globalThis.localStorage?.setItem(`lattices.editor.view.v1:${subjectId}`, view); } catch { /* Session view still works. */ }
     if (lastLayout) void reportLayout({ ...lastLayout, view });
   }
+  function setSelectedLayers(ids: string[]) {
+    const selectedLayerIds = [...new Set(ids)].filter(id => !state.projection || state.projection.groups.some(g => g.id === id));
+    if (JSON.stringify(selectedLayerIds) === JSON.stringify(state.selectedLayerIds)) return;
+    emit({ selectedLayerIds });
+    if (state.chrome === 'standalone') { try { globalThis.localStorage?.setItem(`lattices.editor.layers.v1:${subjectId}`, JSON.stringify(selectedLayerIds)); } catch { /* Session selection still works. */ } }
+    if (lastLayout) void reportLayout(lastLayout);
+  }
   function reportLayout(payload: ReturnType<typeof layoutState>) {
-    lastLayout = { ...payload, view: state.view };
+    lastLayout = { ...payload, view: state.view, selectedLayerIds: [...state.selectedLayerIds] };
     if (state.chrome !== 'host' || disposed) return Promise.resolve();
     const snapshot = lastLayout;
     uiSend = uiSend.then(async () => {
@@ -160,7 +172,7 @@ export function createEditorModel(bridge: HostBridge) {
     return uiSend;
   }
   return {
-    selection, setView, reportLayout,
+    selection, setView, setSelectedLayers, reportLayout,
     subscribeUI(listener: (command: UICommand) => void) {
       uiListeners.add(listener); uiQueue.splice(0).forEach(listener);
       return () => { uiListeners.delete(listener); };
