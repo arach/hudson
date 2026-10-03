@@ -1,9 +1,10 @@
+import { validFrame, type Frame, type Display, type LayoutPreview } from './geometry';
 import { isLayerIds, isUICommand, type UICommand, type EditorView, type layoutState } from './ui';
 import { createRevisionGuard, HostBridgeError, type HostBridge, type HostEnvelope } from '../../packages/web/hudsonkit/src/editor/host-bridge';
 import { createSubjectStore, type EditorSubject, type EditorSelection, type SourceRange } from '../../packages/web/hudsonkit/src/editor/subject-store';
 export interface Entry { key: string; layerId: string; canonical: string; ranges: SourceRange[]; ambiguous: boolean }
-export interface PreviewRow { id: string; windowId: number; app: string; title: string; layerId: string | null; entryKeys: string[] }
-export interface Projection { snapshotId: string; groups: { id: string; label: string; rows: PreviewRow[] }[]; entries: Entry[] }
+export interface PreviewRow { frame?:Frame|null; displayId?:string|null; matchedRule?:number|null; frameSource?:'live'|'lastKnown'|'savedHome'|'unavailable'; id: string; windowId: number; app: string; title: string; layerId: string | null; entryKeys: string[] }
+export interface Projection { displays?:Display[]; snapshotId: string; groups: { id: string; label: string; preview?:LayoutPreview; rows: PreviewRow[] }[]; entries: Entry[] }
 interface SubjectRead { subject: EditorSubject; source: { text: string; language: 'json' } }
 interface Capabilities { selectedLayerIds?: string[]; chrome?: 'host'; readOnly: boolean; methods: string[]; subject: Omit<EditorSubject, 'revision'> & { revision: string | null }; terminal: boolean }
 export interface EditorState {
@@ -30,6 +31,7 @@ function validateDocument(payload: unknown, id: string, revision: string | null)
 }
 export function validateProjection(p: unknown, text: string): asserts p is Projection {
   if (!record(p) || typeof p.snapshotId !== 'string' || !Array.isArray(p.groups) || !Array.isArray(p.entries)) throw new Error('Invalid preview response');
+  if (p.displays !== undefined && (!Array.isArray(p.displays) || p.displays.some(d=>!record(d)||typeof d.id!=='string'||typeof d.name!=='string'||typeof d.main!=='boolean'||!validFrame(d.frame)))) throw new Error('Invalid display geometry');
   const keys = new Set<string>(), rows = new Set<string>(), groups = new Set<string>();
   for (const e of p.entries) {
     if (!record(e) || typeof e.key !== 'string' || keys.has(e.key) || typeof e.layerId !== 'string' ||
@@ -46,8 +48,10 @@ export function validateProjection(p: unknown, text: string): asserts p is Proje
       if (!record(r) || typeof r.id !== 'string' || rows.has(r.id) || !Number.isInteger(r.windowId) ||
         typeof r.app !== 'string' || typeof r.title !== 'string' || !(r.layerId === null || typeof r.layerId === 'string') ||
         !Array.isArray(r.entryKeys) || r.entryKeys.some(k => typeof k !== 'string' || !keys.has(k))) throw new Error('Invalid preview row');
+      if (r.frame!=null&&!validFrame(r.frame) || r.displayId!=null&&typeof r.displayId!=='string' || r.matchedRule!=null&&(!Number.isInteger(r.matchedRule)||(r.matchedRule as number)<0) || r.frameSource!==undefined&&!['live','lastKnown','savedHome','unavailable'].includes(String(r.frameSource))) throw new Error('Invalid row geometry');
       rows.add(r.id);
     }
+    if (g.preview!==undefined && (!record(g.preview)||typeof g.preview.layout!=='string'||typeof g.preview.displayId!=='string'||!Array.isArray(g.preview.frames)||g.preview.frames.some(f=>!record(f)||!Number.isInteger(f.windowId)||!(g.rows as Record<string,unknown>[]).some((r:Record<string,unknown>)=>r.windowId===f.windowId)||!validFrame(f.frame)))) throw new Error('Invalid proposed geometry');
   }
 }
 export function selectionForKeys(projection: Projection, keys: string[], origin: string, rowIds: string[] = []): EditorSelection {

@@ -175,3 +175,21 @@ All windows sums those counts. Ordinary index clicks replace selection,
 Cmd/Ctrl-click toggles in insertion order, All windows clears it.
 
 This extension adds no geometry fields or configuration mutation operations.
+
+### Optional arrangement geometry (frozen with native builder)
+
+Projection may include `displays:[{id:string,name:string,main:boolean,frame}]`.
+Frame is `{x,y,w,h}` in global top-left points; finite coordinates and positive
+sizes. Each row may add `frame:Frame|null`, `displayId:string|null`,
+`frameSource:'live'|'lastKnown'|'savedHome'|'unavailable'`, and
+`matchedRule:number|null`. The rule index is zero-based raw projects order:
+expand a layer's entry ranges and sort by UTF-16 `from`. Ambiguous duplicates
+and Unassigned have a null index; no winning rule is guessed.
+
+Groups may add `preview:{layout:string,displayId:string,
+frames:[{windowId:number,frame:Frame}]}`. These are pure native LayerLayout
+results for eligible windows only; destination IDs refer to displays.
+Missing preview/frames means unavailable, never current-as-proposed. The web
+labels only live frames Now and only compares live/proposed pairs as Moves or
+Stays. Other provenance is Last known, Saved position, or Position (legacy).
+Unavailable frames are not drawn. No mutation or arrangement operation is added.
