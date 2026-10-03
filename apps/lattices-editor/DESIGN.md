@@ -288,3 +288,19 @@ compact segmented control, ruler and unified rule table. Native app chrome is
 outside this bundle. The pinned chat remains from the approved earlier pass;
 therefore shorter viewports scroll the rule table rather than clipping chat.
 Mock geometry and counts differ intentionally from the illustrative board.
+
+## Act pass: on demand, confirmed
+
+Layout inspection stays passive. Explicit Gather/Open buttons first request a
+native plan, then present its actual scope in a cancellable confirmation
+popover. Only its second explicit confirmation sends the plan ID back. Layer,
+revision or view changes invalidate pending confirmations. Replies never trigger
+actions. No auto-retry of mutations. Receipts show native outcomes without
+optimistically marking positions In place; the refreshed layout remains truth.
+
+The existing composer becomes live only when the host advertises support.
+Layer context includes rule/window counts; messages and suggestions sit above
+it. Suggestions use exactly the same plan/confirm path as header/row actions.
+Repeated native state/result events must preserve referential identity when
+unchanged. Match the local ActLayer/ActConfirm/ActDone boards, retaining the
+emerald register and neutral failure copy. Native wire agreement precedes code.
