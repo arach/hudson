@@ -219,3 +219,10 @@ and rules from the projection; the narrow picker can replace a multi-selection.
 The Unassigned row keeps its actual projection identity. Group counts come from
 host rows, not a second membership resolver. Index selection does not select
 windows, switch pages, apply layouts or mutate configuration.
+
+## Shared selection feedback
+
+Only actual index selection uses the raised background. Hover changes ink, not
+the background; host selection updates clear focus on a now-unselected index
+button. A browser regression keeps the pointer over the previous selection and
+verifies its background is transparent and stale focus is removed.
