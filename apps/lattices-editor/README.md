@@ -182,3 +182,43 @@ b4aa079cf5c00d1dae4fb507b07481c9861405ffbbe0568b4a49d770d92f5723  editor.js
 14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  jetbrains-mono-latin-400-normal.woff2
 400c6bfda18d5d14acad1c15d6dcb9f8e13c015e7286317e0b9a482539bef147  jetbrains-mono-latin-600-normal.woff2
 ```
+
+## Act release — frozen v1
+
+The layer Overview now supports explicit, confirmed Gather/Open and per-layer
+chat against `docs/proposals/editor-act-wire-v1.md`. Open is launch-only. Buttons
+request a plan; only the confirmation invokes the operation. Escape, outside
+click, Cancel and context changes abandon confirmation. Plans are never retried
+automatically. Assistant replies and suggestions are inert until clicked.
+
+Receipts are native-authored, deduplicated by actionId, and followed by a read-only
+layout/history refresh. Undo requires advertised `action.undo` and the native
+newestUndoableActionId. Cmd-Z works on the page, including Workspace, but not in
+text editors. Partial undo reasons and “Opened apps stay open” are preserved.
+Native shortcuts appear only when returned in a plan; no shortcut is guessed.
+The composer uses the existing kit controller and confirmation uses HudPopover.
+
+Verification: build, typecheck and scoped lint pass (the existing pages-directory
+lint advisory remains). **62 tests pass, 0 fail, 247 assertions.** Browser coverage
+includes all earlier suites plus explicit planning/confirmation, Escape/outside/
+Cancel, no effects on load/select/view/assistant reply, native receipt/layout
+refresh, Undo/history, composer undo isolation and page Cmd-Z in Workspace.
+All effects in these tests are synthetic mock state. No native Gather/Open/Undo
+was executed. Production excludes mock fixtures.
+
+Compared against local ActLayer, ActConfirm and ActDone HTML exports. Captures:
+`design-evidence/act-layer-1280.png`, `act-confirm-1280.png`, `act-done-1280.png`,
+`act-undo-1280.png`, and `act-layer-560.png`. Wide captures are 1280×1340 with the
+retained pinned conversation; the extra narrow capture is 560×820. Native chrome
+and illustrative board names/counts are not copied into the web mock.
+
+Dist: `/Users/arach/dev/hudson-worktrees/lattices-editor-slice-1/apps/lattices-editor/dist/`
+
+```text
+03030223e03fcbf78dd7ff78ad996e794255a71afdddd20b5a58f6a2c765cd10  editor.css
+95d3c5363ea4196f0037cd6abc0f466773fe64337bffc2f9bfd328c8ff788707  editor.js
+6ceb52eedcfc21964230e4e1793d4e9703b7d76393b8a3808229b6c30c19c208  index.html
+403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b  jetbrains-mono-LICENSE.txt
+14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  jetbrains-mono-latin-400-normal.woff2
+400c6bfda18d5d14acad1c15d6dcb9f8e13c015e7286317e0b9a482539bef147  jetbrains-mono-latin-600-normal.woff2
+```
