@@ -58,6 +58,24 @@ Framework `LC_ID_DYLIB` values and the app's matching `LC_LOAD_DYLIB` entries
 must use `@rpath`; `hkit` rejects absolute build paths before signing and names
 the `install_name_tool` repair required upstream.
 
+Apps and embedded helpers may declare a `resources` array of paths relative to
+the config file, typically the SwiftPM resource bundles a build produces:
+
+```json
+{
+  "name": "Hudson App",
+  "resources": [".build/release/HudsonApp_HudsonApp.bundle", "assets/notice.txt"]
+}
+```
+
+Each file or directory is copied to `Contents/Resources/<basename>` before that
+bundle is signed, so the signature seals it. Every app and helper's resources
+are checked before any bundle is assembled: missing inputs, duplicate basenames,
+a resource named `AppIcon.icns` alongside `icon`, and a resource that contains
+the output bundle are rejected. Extended attributes are dropped, and a symlink
+inside a resource must be relative and stay inside that resource so the shipped
+app never points back at the build machine.
+
 Use `--local` for smoke builds that skip notarization and allow ad-hoc signing.
 Ad-hoc fallback omits hardened runtime so locally packaged frameworks can load
 without a Developer Team ID; identified release signing retains hardened runtime.

@@ -5,9 +5,13 @@ import {
   chmodSync,
   cpSync,
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
+  readlinkSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -16,9 +20,11 @@ import {
   basename,
   dirname,
   extname,
+  isAbsolute,
   join,
   relative,
   resolve,
+  sep,
 } from 'node:path';
 import process from 'node:process';
 
@@ -291,6 +297,107 @@ export function normalizeFrameworkPaths(app) {
   });
 }
 
+export function normalizeResourcePaths(app) {
+  const label = app.name ?? app.product ?? '<unnamed>';
+  const resources = app.resources ?? [];
+  if (!Array.isArray(resources)) {
+    throw new Error(`resources for ${label} must be an array of paths.`);
+  }
+  return resources.map((resourcePath, index) => {
+    if (typeof resourcePath !== 'string' || !resourcePath.trim()) {
+      throw new Error(`resources[${index}] for ${label} must be a non-empty path.`);
+    }
+    return resourcePath.trim();
+  });
+}
+
+function isWithin(parent, child) {
+  const path = relative(parent, child);
+  return path === '' || (!path.startsWith(`..${sep}`) && path !== '..' && !isAbsolute(path));
+}
+
+// realpath for a path that may not exist yet, such as an unbuilt bundle.
+function realpathOfPlannedPath(path) {
+  const absolute = resolve(path);
+  if (existsSync(absolute)) return realpathSync(absolute);
+  const parent = dirname(absolute);
+  return parent === absolute ? absolute : join(realpathOfPlannedPath(parent), basename(absolute));
+}
+
+// Resolves each configured resource to `Contents/Resources/<basename>` and
+// rejects anything that cannot be copied verbatim. Runs before the bundle is
+// touched so a bad config never leaves a half-assembled app behind.
+export function planAppResources(app, bundlePath, context) {
+  const label = app.name ?? app.product ?? '<unnamed>';
+  const resourcesDir = join(bundlePath, 'Contents', 'Resources');
+  const names = new Set();
+  return normalizeResourcePaths(app).map(resourcePath => {
+    const configured = resolve(context.configDir, resourcePath);
+    if (!existsSync(configured)) {
+      throw new Error(`resource not found for ${label}: ${configured}`);
+    }
+
+    const name = basename(configured);
+    if (!name || name === '.' || name === '..') {
+      throw new Error(`resource path for ${label} has no usable bundle name: ${resourcePath}`);
+    }
+    if (name === 'AppIcon.icns' && app.icon) {
+      throw new Error(`resource ${name} for ${label} collides with the generated app icon`);
+    }
+    if (names.has(name)) {
+      throw new Error(`duplicate resource name for ${label}: ${name}`);
+    }
+    names.add(name);
+
+    const source = realpathSync(configured);
+    if (isWithin(source, realpathOfPlannedPath(bundlePath))) {
+      throw new Error(`resource ${resourcePath} for ${label} contains the output bundle ${bundlePath}`);
+    }
+
+    return { name, source, destination: join(resourcesDir, name) };
+  });
+}
+
+function planResourcesRecursively(app, bundlePath, context) {
+  planAppResources(app, bundlePath, context);
+  for (const helper of app.embeddedHelpers ?? []) {
+    planResourcesRecursively(helper, helperBundlePath(bundlePath, helper), context);
+  }
+}
+
+// A shipped bundle must not reach back into the build machine, so every
+// symlink inside a copied resource has to stay relative and inside that
+// resource.
+export function assertPortableResourceTree(root) {
+  const pending = [root];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    const stat = lstatSync(current);
+    if (stat.isSymbolicLink()) {
+      const target = readlinkSync(current);
+      if (isAbsolute(target) || !isWithin(root, resolve(dirname(current), target))) {
+        throw new Error(`resource symlink ${current} points outside the resource (${target})`);
+      }
+      continue;
+    }
+    if (stat.isDirectory()) {
+      for (const entry of readdirSync(current)) pending.push(join(current, entry));
+    }
+  }
+}
+
+export function copyAppResources(plan) {
+  for (const resource of plan) {
+    if (existsSync(resource.destination)) {
+      throw new Error(`resource destination already exists: ${resource.destination}`);
+    }
+    mkdirSync(dirname(resource.destination), { recursive: true });
+    // Drop xattrs and resource forks; codesign rejects them as detritus.
+    runCommand('ditto', ['--norsrc', '--noextattr', '--noqtn', '--noacl', resource.source, resource.destination], { stdio: 'inherit' });
+    assertPortableResourceTree(resource.destination);
+  }
+}
+
 export function parseExecutableRpaths(output) {
   return Array.from(
     String(output).matchAll(/^\s*path (.+) \(offset \d+\)$/gm),
@@ -527,8 +634,15 @@ function signAppBundle(bundlePath, app, identity, options) {
   runCommand('codesign', ['--verify', '--deep', '--strict', bundlePath], { stdio: 'inherit' });
 }
 
-function buildAppBundle(app, bundlePath, args, context, tempRoots) {
+function helperBundlePath(parentBundlePath, helper) {
+  const helperBundleName = helper.bundleName ?? `${helper.name ?? helper.product}.app`;
+  const destination = helper.destination ?? 'Contents/Library/LoginItems';
+  return join(parentBundlePath, destination, helperBundleName);
+}
+
+export function buildAppBundle(app, bundlePath, args, context, tempRoots, nested = false) {
   if (!app.bundleIdentifier) throw new Error(`app ${app.name ?? '<unnamed>'} is missing bundleIdentifier`);
+  if (!nested) planResourcesRecursively(app, bundlePath, context);
 
   const bundleName = basename(bundlePath);
   const contentsDir = join(bundlePath, 'Contents');
@@ -561,13 +675,13 @@ function buildAppBundle(app, bundlePath, args, context, tempRoots) {
     setPlistValue(plistPath, 'CFBundleIconFile', 'string', 'AppIcon');
   }
 
+  // Resources are sealed by the signature below, so they must land first.
+  copyAppResources(planAppResources(app, bundlePath, context));
+
   embedFrameworks(app, contentsDir, executablePath, context);
 
   for (const helper of app.embeddedHelpers ?? []) {
-    const helperBundleName = helper.bundleName ?? `${helper.name ?? helper.product}.app`;
-    const destination = helper.destination ?? 'Contents/Library/LoginItems';
-    const helperBundlePath = join(bundlePath, destination, helperBundleName);
-    buildAppBundle(helper, helperBundlePath, args, context, tempRoots);
+    buildAppBundle(helper, helperBundlePath(bundlePath, helper), args, context, tempRoots, true);
   }
 
   signEmbeddedFrameworks(bundlePath, app, context.signingIdentity, args);
