@@ -19,12 +19,12 @@ export function Sheet04Surfaces() {
         right: ['STACK', 'NATIVE'],
       }}
     >
-      <div style={{ maxWidth: 1300, margin: '60px auto 0' }}>
+      <div style={{ maxWidth: 1300, margin: '96px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
           <Eyebrow>05 / Consistent primitives</Eyebrow>
         </div>
 
-        <h2 className="h-section" style={{ marginBottom: 48 }}>
+        <h2 className="h-section" style={{ marginBottom: 64 }}>
           Consistent primitives. <em>Native</em> implementations.
         </h2>
 
@@ -35,7 +35,7 @@ export function Sheet04Surfaces() {
             border: 'var(--stroke-w) solid var(--ink)',
             background: 'var(--paper)',
             padding: 40,
-            marginBottom: 48,
+            marginBottom: 64,
             position: 'relative',
           }}
         >

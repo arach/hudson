@@ -1,0 +1,10 @@
+{
+  "providerID": "microsoft-mai",
+  "modelID": "MAI-Transcribe-2",
+  "endpoint": "https://EXAMPLE-RESOURCE.cognitiveservices.azure.com",
+  "region": "eastus",
+  "credentialReference": {
+    "identifier": "azure-speech"
+  },
+  "options": {}
+}

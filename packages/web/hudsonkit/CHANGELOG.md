@@ -46,6 +46,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Pack gate for sealed artifacts: `assert-dist` (pre-pack: dist must contain
   `styles.css` + tokens + type decls) and `verify-pack` (post-pack: tarball
   listing must include those paths). `bun run pack` runs both.
+- Add `HudWindowFrame` to `hudsonkit/nav` for macOS windows with an overlay
+  title bar. When the nav folds to the icon rail, a title bar appears with
+  room for the traffic lights and a `brand` slot, and the page becomes an
+  inset sheet with a curved corner. It uses the rail's transition curve and
+  takes its colors and motion from `--hud-window-frame-*` template tokens.
+- `HudRailResizeHandle`: `lineVisibility` (`always` / `hover` / `never`) and a
+  `[data-hud-rail-resize-line]` hook for the hairline. The handle no longer
+  adds `relative` when the caller positions it. A click that doesn't drag now
+  focuses the handle.
+- `HudSideNav`: `collapsedHeader={false}` / `collapsedFooter={false}` are now
+  documented and typed as "none while collapsed".
 
 ### Changed
 

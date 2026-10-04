@@ -39,7 +39,7 @@ export function Sheet02Possession() {
         right: ['SCALE', '1 : 1'],
       }}
     >
-      <div style={{ maxWidth: 1300, margin: '28px auto 0' }}>
+      <div style={{ maxWidth: 1300, margin: '48px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
           <Eyebrow>02 / Live Embed · spec ↔ live</Eyebrow>
         </div>
@@ -60,7 +60,7 @@ export function Sheet02Possession() {
             gridTemplateColumns: '1fr 320px',
             gap: 32,
             alignItems: 'start',
-            marginBottom: 64,
+            marginBottom: 80,
           }}
         >
           <div>

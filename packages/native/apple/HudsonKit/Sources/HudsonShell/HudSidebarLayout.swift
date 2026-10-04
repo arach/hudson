@@ -56,6 +56,14 @@ public enum HudSidebarLayout {
     /// first-row rhythm shared by native content and inspector headers.
     public static var headerBottomPadding: CGFloat { 14 }  // HudSpacing.xxl
 
+    /// Offset a header slot to share the center line of an adjacent page header.
+    /// `topInset` is the distance from the sidebar's top to the page header's top.
+    /// Apply to the complete header control so its hit area moves with its label.
+    /// Navigation rows retain their existing positions and compact-mode geometry.
+    public static func headerOffset(topInset: CGFloat, pageHeaderHeight: CGFloat) -> CGFloat {
+        topInset + pageHeaderHeight / 2 - (headerTopPadding + headerHeight / 2)
+    }
+
     // ── Glyphs ───────────────────────────────────────────────────────────────
 
     /// SF Symbol point size for row icons.

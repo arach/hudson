@@ -85,6 +85,31 @@ describe('WorkspaceShell SSR smoke', () => {
     }
   });
 
+  it('keeps focused panel content between the shell header and status bar', () => {
+    const fixture = makeTestWorkspace();
+    const config = fixture.workspace.apps[0];
+    const workspace = {
+      ...fixture.workspace,
+      mode: 'panel' as const,
+      apps: [{ ...config, app: {
+        ...config.app,
+        mode: 'panel' as const,
+        hooks: { ...config.app.hooks, useLayoutMode: () => 'focus' as const },
+      } }],
+    };
+    const html = renderToString(
+      <WorkspaceShell workspaces={[workspace]} defaultWorkspaceId="test" bootMode="none" />,
+    );
+    const world = html.match(/<div[^>]*data-hudson-world[^>]*>/)?.[0];
+    expect(world).toBeDefined();
+    expect(world).toContain('absolute');
+    expect(world).toMatch(/top:[1-9]\d*px/);
+    expect(world).toMatch(/bottom:[1-9]\d*px/);
+    expect(world).toContain('left:0');
+    expect(world).toContain('right:0');
+    expect(html).toContain('data-testid="content-alpha"');
+  });
+
   it('honors server-provided initialState during SSR (initialState wins over defaults)', () => {
     const fixture = makeTestWorkspace();
 

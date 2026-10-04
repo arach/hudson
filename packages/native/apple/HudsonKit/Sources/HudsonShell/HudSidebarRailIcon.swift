@@ -107,6 +107,15 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
             )
             .focusable(true)
             .focused($isFocused)
+            .onAppear {
+                // AppKit will hand first-responder to the first focusable rail
+                // icon. Drop that so a non-rail page (Settings, Docs) does not
+                // open with a leftover ring on Home.
+                if !isSelected { isFocused = false }
+            }
+            .onChange(of: isSelected) { _, selected in
+                if !selected { isFocused = false }
+            }
             .onHover { setHovering($0) }
             .onContinuousHover { phase in
                 switch phase {

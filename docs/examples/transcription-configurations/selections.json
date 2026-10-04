@@ -1,0 +1,28 @@
+{
+  "dictation": {
+    "configuration": {
+      "providerID": "fluidaudio",
+      "modelID": "parakeet-v3",
+      "options": {}
+    },
+    "remoteConsentFingerprint": null
+  },
+  "recording": {
+    "configuration": {
+      "providerID": "elevenlabs-reference",
+      "modelID": "scribe_v2",
+      "credentialReference": { "identifier": "elevenlabs" },
+      "options": {}
+    },
+    "remoteConsentFingerprint": "sha256:f90eb7502dc5c4593a3a4730f88439507795d0f2ef632c04080e0c2369189950"
+  },
+  "meeting": {
+    "configuration": {
+      "providerID": "gemini-file",
+      "modelID": "gemini-3.5-transcribe",
+      "credentialReference": { "identifier": "gemini" },
+      "options": {}
+    },
+    "remoteConsentFingerprint": "sha256:b76b3d8fecebba19fc508eda03af2b576e885c270ab6ec7cdf2c47a08871f69c"
+  }
+}

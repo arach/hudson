@@ -19,16 +19,18 @@ public enum HudAppShellStatusBarSpan: String, CaseIterable, Identifiable, Sendab
 /// `.flush` is the original anatomy: one background fills the window and the
 /// columns meet at square seams. `.card` sets the center column into the
 /// window as a card: the shell paints its background only inside that column,
-/// clips it to a rounded top-leading corner (and, with `bottomRadius`, a
-/// matching bottom-leading one), and draws a hairline along its top and
-/// leading edges. Everything outside the card — the titlebar band
+/// clips it to a rounded top-leading corner, and draws a hairline along its
+/// top and leading edges. Everything outside the card — the titlebar band
 /// and the side columns — shows whatever the host puts behind the shell, so
 /// a host that extends its sidebar material there gets one L-shaped frame
 /// around the stage, and the traffic lights sit on a single surface instead
 /// of a seam.
 public enum HudAppShellStage: Equatable, Sendable {
     case flush
-    case card(radius: CGFloat, bottomRadius: CGFloat = 0)
+    case card(radius: CGFloat)
+    /// All four corners rounded, with one thin border around the full stage.
+    /// Use `stageInsets` to reveal the host's background around its edges.
+    case roundedCard(radius: CGFloat)
 }
 
 /// Top-level app chassis for HudsonKit.
@@ -95,6 +97,7 @@ public struct HudAppShell<
 >: View {
     private let statusBarSpan: HudAppShellStatusBarSpan
     private let stage: HudAppShellStage
+    private let stageInsets: EdgeInsets
     private let leading: Leading
     private let trailing: Trailing
     private let topDrawer: TopDrawer
@@ -111,6 +114,7 @@ public struct HudAppShell<
     public init(
         statusBarSpan: HudAppShellStatusBarSpan = .fullWidth,
         stage: HudAppShellStage = .flush,
+        stageInsets: EdgeInsets = EdgeInsets(),
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder trailing: () -> Trailing,
         @ViewBuilder topDrawer: () -> TopDrawer,
@@ -120,6 +124,7 @@ public struct HudAppShell<
     ) {
         self.statusBarSpan = statusBarSpan
         self.stage = stage
+        self.stageInsets = stageInsets
         self.leading = leading()
         self.trailing = trailing()
         self.topDrawer = topDrawer()
@@ -147,6 +152,7 @@ public struct HudAppShell<
                     leading
                     mainContentRow
                         .modifier(HudAppShellStageSurface(stage: stage))
+                        .padding(stageInsets)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 bottomDrawer
@@ -166,6 +172,7 @@ public struct HudAppShell<
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .modifier(HudAppShellStageSurface(stage: stage))
+                .padding(stageInsets)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -186,6 +193,7 @@ public struct HudAppShell<
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .modifier(HudAppShellStageSurface(stage: stage))
+                .padding(stageInsets)
                 if !isCompact {
                     trailing
                         .frame(maxHeight: .infinity, alignment: .top)
@@ -229,6 +237,7 @@ extension HudAppShell where TopDrawer == EmptyView, BottomDrawer == EmptyView {
     public init(
         statusBarSpan: HudAppShellStatusBarSpan = .fullWidth,
         stage: HudAppShellStage = .flush,
+        stageInsets: EdgeInsets = EdgeInsets(),
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder trailing: () -> Trailing,
         @ViewBuilder content: () -> Content,
@@ -237,6 +246,7 @@ extension HudAppShell where TopDrawer == EmptyView, BottomDrawer == EmptyView {
         self.init(
             statusBarSpan: statusBarSpan,
             stage: stage,
+            stageInsets: stageInsets,
             leading: leading,
             trailing: trailing,
             topDrawer: { EmptyView() },
@@ -264,7 +274,7 @@ extension HudAppShell where Leading == EmptyView, Trailing == EmptyView, TopDraw
 
 // MARK: - Stage surface
 
-/// Paints and clips the center column for `HudAppShellStage.card`; a no-op
+/// Paints and clips the center column for the card styles; a no-op
 /// for `.flush`, where the shell's full-window background already sits behind.
 private struct HudAppShellStageSurface: ViewModifier {
     let stage: HudAppShellStage
@@ -274,47 +284,41 @@ private struct HudAppShellStageSurface: ViewModifier {
         switch stage {
         case .flush:
             content
-        case .card(let radius, let bottomRadius):
+        case .card(let radius):
             content
                 .background(theme.palette.bg)
-                .clipShape(UnevenRoundedRectangle(
-                    topLeadingRadius: radius,
-                    bottomLeadingRadius: bottomRadius,
-                    style: .circular
-                ))
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: radius, style: .circular))
                 .overlay {
-                    HudStageCardEdge(radius: radius, bottomRadius: bottomRadius)
+                    HudStageCardEdge(radius: radius)
                         .stroke(theme.hairline.subtle, lineWidth: HudStrokeWidth.standard)
+                        .allowsHitTesting(false)
+                }
+        case .roundedCard(let radius):
+            let shape = RoundedRectangle(cornerRadius: radius, style: .circular)
+            content
+                .background(theme.palette.bg)
+                .clipShape(shape)
+                .overlay {
+                    shape
+                        .strokeBorder(theme.hairline.subtle, lineWidth: HudStrokeWidth.thin)
                         .allowsHitTesting(false)
                 }
         }
     }
 }
 
-/// The card's top and leading edges with the rounded corner between them,
-/// plus the bottom-leading arc when the card rounds that corner too. The
-/// trailing and bottom edges meet other chrome (the inspector, the window
+/// The card's top and leading edges with the rounded corner between them.
+/// The trailing and bottom edges meet other chrome (the inspector, the window
 /// edge) and carry no line of their own. Inset half a stroke so the 1pt line
 /// lands inside the clip.
 private struct HudStageCardEdge: Shape {
     let radius: CGFloat
-    var bottomRadius: CGFloat = 0
 
     func path(in rect: CGRect) -> Path {
         let r = rect.insetBy(dx: HudStrokeWidth.standard / 2, dy: HudStrokeWidth.standard / 2)
         let radius = min(radius, r.width / 2, r.height / 2)
-        let bottomRadius = min(bottomRadius, r.width / 2, r.height / 2)
         var path = Path()
-        if bottomRadius > 0 {
-            path.move(to: CGPoint(x: r.minX + bottomRadius, y: r.maxY))
-            path.addArc(
-                tangent1End: CGPoint(x: r.minX, y: r.maxY),
-                tangent2End: CGPoint(x: r.minX, y: r.maxY - bottomRadius),
-                radius: bottomRadius
-            )
-        } else {
-            path.move(to: CGPoint(x: r.minX, y: r.maxY))
-        }
+        path.move(to: CGPoint(x: r.minX, y: r.maxY))
         path.addLine(to: CGPoint(x: r.minX, y: r.minY + radius))
         path.addArc(
             tangent1End: CGPoint(x: r.minX, y: r.minY),

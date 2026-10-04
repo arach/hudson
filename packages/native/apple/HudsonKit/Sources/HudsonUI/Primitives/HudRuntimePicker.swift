@@ -462,6 +462,18 @@ public extension View {
 /// where it is a real choice; a host with no effort concept leaves it nil and
 /// the segment disappears. Nothing renders at all when the runtime names
 /// neither a harness nor a model.
+/// How `HudRuntimeChip` draws at rest.
+///
+/// - `chip`: a seated capsule with the harness mark, squaring toward the
+///   panel's corners while it is open.
+/// - `text`: no seat at all — the mark, the model in the UI face, effort in
+///   the dim ink, a chevron. Hover and the open state brighten the ink. For
+///   hairline surfaces, where a filled capsule is the one soft shape left.
+public enum HudRuntimeChipPresentation: Equatable, Sendable {
+    case chip
+    case text
+}
+
 public struct HudRuntimeChip: View {
     let harness: String?
     let monogram: String
@@ -469,6 +481,7 @@ public struct HudRuntimeChip: View {
     /// Reasoning effort — the third of the triplet. Nil where nothing can
     /// change it, and the segment is dropped.
     var effort: String?
+    var presentation: HudRuntimeChipPresentation
     /// The panel is open on this chip. The chip does NOT go away while it is —
     /// the panel grows out of it and it stays as the live readout — so it takes
     /// an active state instead: a rimmed seat and a flipped chevron. A chip
@@ -480,6 +493,7 @@ public struct HudRuntimeChip: View {
 
     @Environment(\.hudTheme) private var theme
     @Environment(\.hudRuntimeIsPicking) private var environmentPicking
+    @Environment(\.hudRuntimeMark) private var markProvider
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     #if os(macOS)
     @State private var isHovering = false
@@ -490,6 +504,7 @@ public struct HudRuntimeChip: View {
         monogram: String = "",
         model: String?,
         effort: String? = nil,
+        presentation: HudRuntimeChipPresentation = .chip,
         isPicking: Bool = false,
         onPick: (() -> Void)? = nil
     ) {
@@ -497,6 +512,7 @@ public struct HudRuntimeChip: View {
         self.monogram = monogram
         self.model = model
         self.effort = effort
+        self.presentation = presentation
         self.isPicking = isPicking
         self.onPick = onPick
     }
@@ -520,7 +536,7 @@ public struct HudRuntimeChip: View {
     public var body: some View {
         if identifies {
             if let onPick {
-                Button(action: onPick) { chip }
+                Button(action: onPick) { face }
                     .buttonStyle(.plain)
                     // Publish the chip's bounds so the panel can grow out of
                     // exactly this rectangle, wherever the composer has laid it
@@ -533,11 +549,70 @@ public struct HudRuntimeChip: View {
                     .onHover { isHovering = $0 }
                     #endif
             } else {
-                chip
+                face
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Runtime: \(readout)")
             }
         }
+    }
+
+    @ViewBuilder
+    private var face: some View {
+        switch presentation {
+        case .chip: chip
+        case .text: textFace
+        }
+    }
+
+    /// The text presentation: the same runs as the chip, with no seat. It
+    /// keeps the chip's height so the control row does not change size.
+    private var textFace: some View {
+        let hot: Bool = {
+            #if os(macOS)
+            return lit || isHovering
+            #else
+            return lit
+            #endif
+        }()
+        // Host artwork only: a lone monogram letter beside a model name reads
+        // as a typo. With no model to show, the harness names itself.
+        let art = markProvider.make(harness, 12)
+        let name: String? = {
+            if let model, !model.isEmpty { return model }
+            guard let harness, !harness.isEmpty else { return nil }
+            return harness.split(whereSeparator: { $0 == "-" || $0 == "_" })
+                .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+                .joined(separator: " ")
+        }()
+        return HStack(spacing: HudSpacing.sm) {
+            if let art {
+                art.foregroundStyle(hot ? theme.palette.ink : theme.palette.muted)
+            }
+            if let name {
+                Text(name)
+                    .font(HudFont.ui(HudTextSize.sm, weight: .medium))
+                    .foregroundStyle(hot ? theme.palette.ink : theme.palette.muted)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            if let effort, !effort.isEmpty {
+                // Medium and `muted`, never `dim`: grey text needs the
+                // wider stem to keep a solid core at 1x.
+                Text(effort)
+                    .font(HudFont.ui(HudTextSize.sm, weight: .medium))
+                    .foregroundStyle(theme.palette.muted)
+                    .fixedSize()
+            }
+            if onPick != nil {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: HudTextSize.micro, weight: .semibold))
+                    .foregroundStyle(hot ? theme.palette.ink : theme.palette.muted)
+                    .rotationEffect(.degrees(lit ? 180 : 0))
+            }
+        }
+        .padding(.horizontal, HudSpacing.xs)
+        .frame(height: HudRuntimeMetrics.chipHeight)
+        .contentShape(Rectangle())
     }
 
     /// A capsule at rest, squaring toward the panel's corner radius while the

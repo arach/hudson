@@ -158,3 +158,4 @@ hudson-docs/dist/
 hudson-docs/.astro/
 .swiftpm/
 .playwright-cli/
+apps/web/site/.vendor/

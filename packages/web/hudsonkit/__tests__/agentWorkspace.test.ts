@@ -3,7 +3,7 @@ import { createAgentWorkspace } from '../src/agent-workspace';
 
 afterEach(() => {
   document.body.replaceChildren();
-  delete (document as Document & { elementFromPoint?: Document['elementFromPoint'] }).elementFromPoint;
+  Reflect.deleteProperty(document, 'elementFromPoint');
 });
 
 describe('agent workspace', () => {

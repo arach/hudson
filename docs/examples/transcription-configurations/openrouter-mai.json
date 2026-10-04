@@ -1,0 +1,8 @@
+{
+  "providerID": "openrouter-mai",
+  "modelID": "microsoft/mai-transcribe-2",
+  "credentialReference": {
+    "identifier": "openrouter"
+  },
+  "options": {}
+}

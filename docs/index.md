@@ -42,6 +42,9 @@ Hudson is a shell + primitives library for building app-like interfaces across w
 - **[Vault](./vault.md)** — encrypted KV: Keychain on Apple, WebCrypto + IndexedDB on web
 - **[AI](./ai.md)** — provider-neutral inference: Claude, OpenAI, OpenRouter
 - **[Voice](./voice.md)** — voice input/output (web `hudsonkit/voice` + Apple `HudsonVoice`)
+- **[Transcription adapters](./guides/transcription-adapters.md)** — shared Apple transcription contract, local and API engines, configuration, and extension points
+- **[Transcription testing](./guides/transcription-adapter-testing.md)** — adapter checks, recorded acceptance, and remaining limitations
+- **[Transcription configuration](./guides/transcription-configuration.md)** — serialized configuration reference and validated examples for agents and developers
 - **[Observability](./observability.md)** — logs, metrics, traces (web `hudsonkit/observability` + Apple `HudsonObservability`)
 - **[Table](./table.md)** — tabular data primitive on both surfaces
 - **[Patterns](./patterns.md)** — optional app-interior rails, trees, grouped lists, cards, and context panels

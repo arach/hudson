@@ -1,3 +1,5 @@
+import Image from 'next/image';
+
 export type AppCardData = {
   id: string;
   name: string;
@@ -5,6 +7,9 @@ export type AppCardData = {
   lede: string;
   body: string;
   accent: string;
+  icon?: string;
+  source?: string;
+  href?: string;
 };
 
 export function AppCard({ app, index }: { app: AppCardData; index: number }) {
@@ -37,21 +42,38 @@ export function AppCard({ app, index }: { app: AppCardData; index: number }) {
             backgroundSize: '12px 12px',
           }}
         />
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            fontFamily: 'var(--font-display)',
-            fontSize: 64,
-            color: app.accent,
-            lineHeight: 1,
-            fontStyle: 'italic',
-          }}
-        >
-          {app.name[0]}
-        </div>
+        {app.icon ? (
+          <Image
+            src={app.icon}
+            alt={`${app.name} icon`}
+            width={88}
+            height={88}
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              borderRadius: 22,
+              boxShadow: '0 0 0 1px oklch(0.64 0 0 / 0.25)',
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              fontFamily: 'var(--font-display)',
+              fontSize: 64,
+              color: app.accent,
+              lineHeight: 1,
+              fontStyle: 'italic',
+            }}
+          >
+            {app.name[0]}
+          </div>
+        )}
         <div
           style={{
             position: 'absolute',
@@ -107,29 +129,45 @@ export function AppCard({ app, index }: { app: AppCardData; index: number }) {
         <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-1)', lineHeight: 1.55 }}>
           {app.body}
         </p>
-        <div
-          style={{
-            marginTop: 'auto',
-            paddingTop: 8,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <span className="tag tag--accent">view source</span>
-          <span style={{ flex: 1 }} />
-          <span
+        {(app.source || app.href) && (
+          <div
             style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 10,
-              color: 'var(--ink-2)',
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
+              marginTop: 'auto',
+              paddingTop: 8,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
             }}
           >
-            ▸ open
-          </span>
-        </div>
+            {app.source && (
+              <a
+                className="tag tag--accent"
+                href={app.source}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                view source
+              </a>
+            )}
+            <span style={{ flex: 1 }} />
+            {app.href && (
+              <a
+                href={app.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 10,
+                  color: 'var(--ink)',
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                ▸ open
+              </a>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

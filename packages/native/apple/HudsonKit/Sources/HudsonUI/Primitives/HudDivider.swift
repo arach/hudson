@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// 1pt hairline divider for stacked content.
+/// 1pt hairline divider for stacked content. `HudRule` is the one-device-pixel
+/// version.
 public struct HudDivider: View {
     public var color: Color
     public var axis: Axis
@@ -28,6 +29,8 @@ extension View {
         radius: CGFloat = HudRadius.standard,
         color: Color = HudHairline.subtle
     ) -> some View {
-        overlay(RoundedRectangle(cornerRadius: radius).stroke(color, lineWidth: 1))
+        // strokeBorder, not stroke: a centred 1pt stroke straddles the frame
+        // edge and lands as two half-lit pixel rows.
+        overlay(RoundedRectangle(cornerRadius: radius).strokeBorder(color, lineWidth: 1))
     }
 }

@@ -102,7 +102,7 @@ export function Sheet02HalfPlotter() {
         right: ['EXPORT', 'SVG · DXF (soon)'],
       }}
     >
-      <div style={{ maxWidth: 1300, margin: '60px auto 0', position: 'relative' }}>
+      <div style={{ maxWidth: 1300, margin: '96px auto 0', position: 'relative' }}>
         <div style={{ marginBottom: 16 }}>
           <Eyebrow>03 / Interactive plotter</Eyebrow>
         </div>

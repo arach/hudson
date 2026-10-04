@@ -1,0 +1,12 @@
+{
+  "providerID": "gemini-live-conversation",
+  "modelID": "gemini-3.8-live",
+  "inputAudio": {
+    "sampleRate": 16000
+  },
+  "credentialReference": {
+    "identifier": "session-grant"
+  },
+  "credentialKind": "ephemeralToken",
+  "options": {}
+}

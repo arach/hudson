@@ -1,0 +1,8 @@
+{
+  "providerID": "gemini-live-transcription",
+  "modelID": "gemini-3.5-transcribe-live",
+  "credentialReference": {
+    "identifier": "gemini"
+  },
+  "options": {}
+}

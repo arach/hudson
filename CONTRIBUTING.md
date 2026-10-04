@@ -34,10 +34,11 @@ All three should pass clean.
 
 If your change touches `packages/web/hudsonkit` or `packages/web/ai-backends`,
 update that package's `CHANGELOG.md`. Bump `version` in its `package.json` when
-you're ready to release, then merge to `main` and wait for the exact merge
-commit's push CI to pass. Run the **Publish npm packages** workflow from `main`,
-enter that full commit SHA, and keep `latest` for stable releases; prereleases
-must use an explicit non-`latest` dist-tag.
+you're ready to release, then merge to `main`. CI does not run automatically:
+start the **CI** workflow on `main` from the Actions tab and wait for it to pass
+on the exact merge commit. Then run the **Publish npm packages** workflow from
+`main`, enter that full commit SHA, and keep `latest` for stable releases;
+prereleases must use an explicit non-`latest` dist-tag.
 
 `packages/web/admin` is build- and typecheck-gated, but it does not yet have a
 release lane. Do not assume the npm publish workflow includes it.

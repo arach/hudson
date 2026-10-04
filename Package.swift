@@ -77,6 +77,8 @@ var products: [Product] = [
     // that graph rule in CI.
     hudsonLibrary(name: "HudsonKitExperimental", targets: ["HudsonKitExperimental"]),
     hudsonLibrary(name: "HudsonObservability", targets: ["HudsonObservability"]),
+    hudsonLibrary(name: "HudsonTranscription", targets: ["HudsonTranscription"]),
+    hudsonLibrary(name: "HudsonTranscriptionUI", targets: ["HudsonTranscriptionUI"]),
     hudsonLibrary(name: "HudsonLive", targets: ["HudsonLive"]),
     hudsonLibrary(name: "HudsonDiff", targets: ["HudsonDiff"]),
     hudsonLibrary(name: "HudsonMarkup", targets: ["HudsonMarkup"]),
@@ -93,9 +95,17 @@ var products: [Product] = [
     hudsonLibrary(name: "HudsonAI", targets: ["HudsonAI"]),
     hudsonLibrary(name: "HudsonCanvasCore", targets: ["HudsonCanvasCore"]),
     hudsonLibrary(name: "HudsonCanvasCompanion", targets: ["HudsonCanvasCompanion"]),
+    hudsonLibrary(name: "HudsonNotchCore", targets: ["HudsonNotchCore"]),
+    hudsonLibrary(name: "HudsonNotch", targets: ["HudsonNotch"]),
+    .executable(name: "hudson-notch", targets: ["HudsonNotchCLI"]),
 ]
 
 var dependencies: [Package.Dependency] = []
+
+// Direct local inference remains independent from the existing Vox runtime.
+dependencies.append(.package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.15.6"))
+products.append(hudsonLibrary(name: "HudsonTranscriptionCloud", targets: ["HudsonTranscriptionCloud"]))
+products.append(hudsonLibrary(name: "HudsonTranscriptionFluidAudio", targets: ["HudsonTranscriptionFluidAudio"]))
 
 var demoDependencies: [Target.Dependency] = ["HudsonUI", "HudsonShell", "HudsonVoice"]
 var demoSwiftSettings: [SwiftSetting] = []
@@ -103,6 +113,8 @@ var demoSwiftSettings: [SwiftSetting] = []
 var targets: [Target] = [
     .target(name: "HudsonKitExperimental", path: src + "HudsonKitExperimental"),
     .target(name: "HudsonObservability", path: src + "HudsonObservability"),
+    .target(name: "HudsonTranscription", path: src + "HudsonTranscription"),
+    .target(name: "HudsonTranscriptionUI", dependencies: ["HudsonTranscription"], path: src + "HudsonTranscriptionUI"),
     .target(name: "HudsonLive", path: src + "HudsonLive"),
     .target(name: "HudsonDiff", path: src + "HudsonDiff"),
     .target(name: "HudsonMarkup", path: src + "HudsonMarkup"),
@@ -123,6 +135,10 @@ var targets: [Target] = [
     .target(name: "HudsonAI", dependencies: ["HudsonUI"], path: src + "HudsonAI"),
     .target(name: "HudsonCanvasCore", dependencies: ["HudsonUI"], path: src + "HudsonCanvasCore"),
     .target(name: "HudsonCanvasCompanion", dependencies: ["HudsonUI", "HudsonCanvasCore"], path: src + "HudsonCanvasCompanion"),
+    .target(name: "HudsonNotchCore", path: src + "HudsonNotchCore"),
+    .target(name: "HudsonNotch", dependencies: ["HudsonUI", "HudsonShell", "HudsonNotchCore"], path: src + "HudsonNotch"),
+    .executableTarget(name: "HudsonNotchCLI", dependencies: ["HudsonNotchCore"], path: src + "HudsonNotchCLI"),
+    .testTarget(name: "HudsonNotchCoreTests", dependencies: ["HudsonNotchCore"], path: tst + "HudsonNotchCoreTests"),
 
     .testTarget(name: "HudsonAITests", dependencies: ["HudsonAI"], path: tst + "HudsonAITests"),
     .testTarget(name: "HudsonMarkupTests", dependencies: ["HudsonMarkup"], path: tst + "HudsonMarkupTests"),
@@ -134,6 +150,11 @@ var targets: [Target] = [
     .testTarget(name: "HudsonBridgeTests", dependencies: ["HudsonBridge"], path: tst + "HudsonBridgeTests"),
     .testTarget(name: "HudsonDiffTests", dependencies: ["HudsonDiff"], path: tst + "HudsonDiffTests"),
     .testTarget(name: "HudsonLiveTests", dependencies: ["HudsonLive"], path: tst + "HudsonLiveTests"),
+    .testTarget(
+        name: "HudsonTranscriptionTests",
+        dependencies: ["HudsonTranscription"],
+        path: tst + "HudsonTranscriptionTests"
+    ),
     .testTarget(name: "HudsonShellTests", dependencies: ["HudsonShell"], path: tst + "HudsonShellTests"),
     .testTarget(name: "HudsonUIWebTests", dependencies: ["HudsonUIWeb"], path: tst + "HudsonUIWebTests"),
     .testTarget(
@@ -150,6 +171,32 @@ var targets: [Target] = [
         path: tst + "HudsonUITests"
     ),
 ]
+
+targets.append(.target(name: "HudsonTranscriptionCloud", dependencies: ["HudsonTranscription"], path: src + "HudsonTranscriptionCloud"))
+targets.append(.target(name: "HudsonTranscriptionFluidAudio", dependencies: ["HudsonTranscription", .product(name: "FluidAudio", package: "FluidAudio")], path: src + "HudsonTranscriptionFluidAudio"))
+targets.append(.testTarget(name: "HudsonTranscriptionCloudTests", dependencies: ["HudsonTranscriptionCloud"], path: tst + "HudsonTranscriptionCloudTests"))
+targets.append(.testTarget(name: "HudsonTranscriptionFluidAudioTests", dependencies: ["HudsonTranscriptionFluidAudio"], path: tst + "HudsonTranscriptionFluidAudioTests"))
+
+products.append(hudsonLibrary(name: "HudsonTranscriptionElevenLabs", targets: ["HudsonTranscriptionElevenLabs"]))
+targets.append(.target(name: "HudsonTranscriptionElevenLabs", dependencies: ["HudsonTranscription", "HudsonTranscriptionCloud"], path: src + "HudsonTranscriptionElevenLabs"))
+targets.append(.testTarget(name: "HudsonTranscriptionElevenLabsTests", dependencies: ["HudsonTranscriptionElevenLabs"], path: tst + "HudsonTranscriptionElevenLabsTests"))
+
+// Conversational voice: reusable two-way spoken assistant sessions. This stack
+// is distinct from the transcription targets above; conversational output must
+// never route through the transcription-only adapters.
+products.append(hudsonLibrary(name: "HudsonConversation", targets: ["HudsonConversation"]))
+products.append(hudsonLibrary(name: "HudsonConversationOpenAI", targets: ["HudsonConversationOpenAI"]))
+products.append(hudsonLibrary(name: "HudsonConversationGemini", targets: ["HudsonConversationGemini"]))
+products.append(hudsonLibrary(name: "HudsonConversationHost", targets: ["HudsonConversationHost"]))
+targets.append(.target(name: "HudsonConversation", path: src + "HudsonConversation"))
+targets.append(.target(name: "HudsonConversationOpenAI", dependencies: ["HudsonConversation"], path: src + "HudsonConversationOpenAI"))
+targets.append(.target(name: "HudsonConversationGemini", dependencies: ["HudsonConversation"], path: src + "HudsonConversationGemini"))
+targets.append(.target(name: "HudsonConversationHost", dependencies: ["HudsonConversation", "HudsonConversationOpenAI", "HudsonConversationGemini"], path: src + "HudsonConversationHost"))
+targets.append(.testTarget(name: "HudsonConversationTests", dependencies: ["HudsonConversation"], path: tst + "HudsonConversationTests"))
+targets.append(.testTarget(name: "HudsonConversationOpenAITests", dependencies: ["HudsonConversationOpenAI"], path: tst + "HudsonConversationOpenAITests"))
+targets.append(.testTarget(name: "HudsonConversationGeminiTests", dependencies: ["HudsonConversationGemini"], path: tst + "HudsonConversationGeminiTests"))
+targets.append(.testTarget(name: "HudsonConversationHostTests", dependencies: ["HudsonConversationHost", "HudsonConversationOpenAI", "HudsonConversationGemini"], path: tst + "HudsonConversationHostTests"))
+
 
 let voxPackage = appendGitDependency(
     to: &dependencies,
@@ -253,6 +300,14 @@ targets.append(
         dependencies: demoDependencies,
         path: demo + "HudsonKitDemo",
         swiftSettings: demoSwiftSettings
+    )
+)
+
+targets.append(
+    .executableTarget(
+        name: "HudsonNotchDemo",
+        dependencies: ["HudsonNotch", "HudsonNotchCore", "HudsonUI"],
+        path: demo + "HudsonNotchDemo"
     )
 )
 

@@ -1,0 +1,8 @@
+{
+  "providerID": "elevenlabs-reference",
+  "modelID": "scribe_v2",
+  "credentialReference": {
+    "identifier": "elevenlabs"
+  },
+  "options": {}
+}

@@ -179,3 +179,5 @@
 }
 
 @keyframes hk-agent-composer-spin { to { transform: rotate(360deg); } }
+
+.hk-agent-composer [data-hk-context-item] { color: var(--hk-agent-accent); background: var(--hk-agent-selection); border-color: var(--hud-accent-line); border-radius: 999px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

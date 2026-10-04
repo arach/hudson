@@ -4,7 +4,8 @@ import React from 'react';
 import type { HudsonIcon } from '../../icons';
 import type { HudDensity } from './types';
 
-export interface HudListItemProps {
+export interface HudListItemProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onClick' | 'children'> {
+  elementRef?: React.Ref<HTMLDivElement>;
   children: React.ReactNode;
   selected?: boolean;
   active?: boolean;
@@ -14,7 +15,7 @@ export interface HudListItemProps {
   trailing?: React.ReactNode;
   trailingBehavior?: 'hover' | 'always';
   density?: HudDensity;
-  onClick?: () => void;
+  onClick?: React.MouseEventHandler<HTMLDivElement>;
   className?: string;
 }
 
@@ -30,6 +31,8 @@ export function HudListItem({
   density = 'default',
   onClick,
   className = '',
+  elementRef,
+  ...attributes
 }: HudListItemProps) {
   const isCompact = density === 'compact';
   const interactive = !!onClick && !disabled;
@@ -40,8 +43,10 @@ export function HudListItem({
       tabIndex={interactive ? 0 : undefined}
       onClick={interactive ? onClick : undefined}
       onKeyDown={interactive ? e => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick!(); }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); }
       } : undefined}
+      ref={elementRef}
+      {...attributes}
       className={[
         'group flex items-start gap-2 border-l-2 transition-colors',
         isCompact ? 'px-2 py-1.5' : 'px-3 py-2',

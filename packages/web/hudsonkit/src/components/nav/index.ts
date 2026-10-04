@@ -66,7 +66,20 @@ export {
   HUD_RAIL_DRAG_EXPAND_TRAVEL,
   HUD_RAIL_KEYBOARD_RESIZE_STEP,
 } from './HudRailResizeHandle';
-export type { HudRailResizeHandleProps } from './HudRailResizeHandle';
+export type {
+  HudRailResizeHandleProps,
+  HudRailResizeLineVisibility,
+} from './HudRailResizeHandle';
+
+// macOS window with an overlay title bar: folded, the nav gets a title bar
+// (traffic lights + brand) and the page an inset sheet with a curved corner.
+export {
+  HudWindowFrame,
+  HUD_WINDOW_TITLE_BAR_HEIGHT,
+  HUD_WINDOW_SIDEBAR_INSET,
+  HUD_WINDOW_TRAFFIC_LIGHTS,
+} from './HudWindowFrame';
+export type { HudWindowFrameProps, HudWindowTrafficLights } from './HudWindowFrame';
 
 // Breadcrumb (minimal chrome).
 export { HudBreadcrumb } from './HudBreadcrumb';
