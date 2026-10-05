@@ -13,6 +13,7 @@ import {
   IBM_Plex_Mono,
 } from "next/font/google";
 import Script from "next/script";
+import { SITE_ORIGIN, GOOGLE_TAG_URL, analyticsInitScript } from "../site/seo";
 import { HudsonThemeClient } from "./HudsonThemeClient";
 import {
   PAPERS,
@@ -152,7 +153,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://hudsonkit.com"),
+  metadataBase: new URL(SITE_ORIGIN),
   title: "HudsonKit — Build the tool. Hudson provides the workspace.",
   description:
     "Canvas, side rails, commands, persistence, logging, and agent-ready infrastructure for application teams.",
@@ -189,14 +190,11 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: getHudsonThemeScript() }} />
         <script dangerouslySetInnerHTML={{ __html: studioBootScript }} />
         <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-GSHDZPFRZG"
+          src={GOOGLE_TAG_URL}
           strategy="afterInteractive"
         />
         <Script id="gtag-init" strategy="afterInteractive">
-          {`window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-GSHDZPFRZG');`}
+          {analyticsInitScript()}
         </Script>
       </head>
       <body className="antialiased" style={{ margin: 0 }}>

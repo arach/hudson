@@ -14,6 +14,7 @@ import { cp, mkdir, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { writeSearchFiles } from './finalize-search.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const outDir = join(root, 'site', 'out');
@@ -89,3 +90,5 @@ await mkdir(vendorDir, { recursive: true });
 for (const product of products) {
   await vendorProduct(product);
 }
+
+await writeSearchFiles(outDir);

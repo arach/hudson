@@ -3,6 +3,8 @@ import { existsSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import matter from 'gray-matter';
+import { SITE_ORIGIN, docPath } from './seo.ts';
+import { writeSearchFiles } from './finalize-search.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const nextAppDir = join(root, '.next', 'server', 'app');
@@ -17,6 +19,9 @@ const staticRoutes = [
   'preview',
   'app',
   'demo',
+  'demo/side-nav',
+  'demo/multi-theme',
+  'license',
   'docs',
   'theme-preview',
 ];
@@ -103,10 +108,10 @@ async function writeLLMsFiles(outDir) {
     '> Multi-app canvas workspace platform for React, iOS, and macOS',
     '',
     '## Documentation',
-    ...docs.map((d) => `- [${d.title}](https://hudsonkit.com/docs/${d.slug}): ${d.description}`),
+    ...docs.map((d) => `- [${d.title}](${SITE_ORIGIN}${docPath(d.slug)}): ${d.description}`),
     '',
     '## Full documentation',
-    'https://hudsonkit.com/llms-full.txt',
+    `${SITE_ORIGIN}/llms-full.txt`,
     '',
   ];
   await writeFile(join(outDir, 'llms.txt'), indexLines.join('\n'));
@@ -116,7 +121,7 @@ async function writeLLMsFiles(outDir) {
     '',
   ];
   for (const d of docs) {
-    fullLines.push(`# ${d.title}`, '', `> Source: https://hudsonkit.com/docs/${d.slug}`, '');
+    fullLines.push(`# ${d.title}`, '', `> Source: ${SITE_ORIGIN}${docPath(d.slug)}`, '');
     if (d.description) fullLines.push(d.description, '');
     fullLines.push(d.content.trim(), '', '---', '');
   }
@@ -135,6 +140,7 @@ async function exportTo(outDir) {
 
   await copyIfExists(join(root, '.next', 'static'), join(outDir, '_next', 'static'));
   await copyIfExists(join(root, 'public'), outDir);
+  await writeSearchFiles(outDir);
 
   await writeFile(
     join(outDir, '_headers'),

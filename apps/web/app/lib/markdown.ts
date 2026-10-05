@@ -9,11 +9,11 @@ import rehypeShiki from "@shikijs/rehype";
 import remarkRewriteLinks from "./remark-rewrite-links";
 
 /** Render markdown to HTML with syntax highlighting and GFM support */
-export async function renderMarkdown(source: string): Promise<string> {
+export async function renderMarkdown(source: string, slug = 'index'): Promise<string> {
   const result = await unified()
     .use(remarkParse)
     .use(remarkGfm)
-    .use(remarkRewriteLinks)
+    .use(remarkRewriteLinks, { slug })
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(rehypeSlug)

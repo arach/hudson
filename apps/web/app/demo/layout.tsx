@@ -1,6 +1,8 @@
+import { canonicalUrl } from "../../site/seo";
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
+  alternates: { canonical: canonicalUrl('/demo/') },
   title: 'HudsonKit — Demo',
   description:
     'See HudsonKit in action. A multi-app canvas workspace for React.',
