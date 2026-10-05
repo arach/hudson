@@ -122,6 +122,33 @@ notch.post(HudNotchActivity(title: "Saved", state: .done))
 
 Give each host its own socket URL so two notch apps never share one. If a socket is already live, `serve` throws `alreadyRunning`. A stale socket file is replaced.
 
+Answers get ⌘1…⌘9 in order and a `cancel` choice gets Escape. They work once the person has clicked into the notch, since it never takes key on its own.
+
+### Theme
+
+`HudNotchTheme` dresses the notch in the host's brand. Pass it as `theme:` to `HudNotchController`. The default, `.hudson`, uses HudsonUI's palette and type.
+
+| Field | What it sets |
+| --- | --- |
+| `body` | The body's color. Keep it near black so it still reads as part of the housing. |
+| `ink`, `muted`, `dim` | Text colors. |
+| `accent` | The idle dot and anything not tied to an activity's tone. |
+| `tones` | Overrides for tone colors. Tones without one use Hudson's status colors. |
+| `eyebrowFont`, `titleFont`, `detailFont` | Type for the source line, the title and the detail. |
+| `action`, `actionInk` | Fill and label for the primary choice. With `action` set, choices are drawn in the theme's colors with their ⌘ key shown. Nil keeps Hudson's buttons. |
+| `mark` | A view drawn in place of the status dot on the left wing and before the eyebrow. It is tinted with the activity's tone. |
+
+```swift
+let theme = HudNotchTheme(
+    body: Color(red: 0.043, green: 0.039, blue: 0.031),
+    accent: brandOrange,
+    titleFont: .custom("EB Garamond", size: 18),
+    action: brandOrange,
+    mark: AnyView(LogoShape().fill())
+)
+let notch = HudNotchController(persistenceKey: "MyApp.notch", copy: copy, theme: theme)
+```
+
 `HudNotchTuner(controller:)` is a settings view for the shape: pokeout, radii, overlap, card heights, timing and display mode (automatic, notch or island). Changes persist under the `persistenceKey`.
 
 ## Motion

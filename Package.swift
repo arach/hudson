@@ -12,8 +12,11 @@ import Foundation
 // stable product and is always present in the package graph; downloading the
 // Parakeet model is controlled at runtime by HudsonVoice instead.
 //   HUDSONKIT_WITH_TERMINAL=1  -> HudsonTerminal + Canvas surface
+//   HUDSONKIT_WITH_VOICE=0     -> no HudsonVoice, and no Vox dependency, for a
+//                                 host that links its own Vox checkout
 let environment = ProcessInfo.processInfo.environment
 let terminalEnabled = environment["HUDSONKIT_WITH_TERMINAL"] == "1"
+let voiceEnabled = environment["HUDSONKIT_WITH_VOICE"] != "0"
 let binaryDistributionEnabled = environment["HUDSONKIT_BINARY_DISTRIBUTION"] == "1"
 let hudsonLibraryType: Product.Library.LibraryType? = binaryDistributionEnabled ? .dynamic : nil
 
@@ -198,36 +201,38 @@ targets.append(.testTarget(name: "HudsonConversationGeminiTests", dependencies: 
 targets.append(.testTarget(name: "HudsonConversationHostTests", dependencies: ["HudsonConversationHost", "HudsonConversationOpenAI", "HudsonConversationGemini"], path: tst + "HudsonConversationHostTests"))
 
 
-let voxPackage = appendGitDependency(
-    to: &dependencies,
-    url: "https://github.com/arach/vox.git",
-    envPrefix: "HUDSON_VOX"
-)
-products.append(hudsonLibrary(name: "HudsonVoice", targets: ["HudsonVoice"]))
-targets.append(
-    .target(
-        name: "HudsonVoice",
-        dependencies: [
-            "HudsonUI",
-            "HudsonObservability",
-            .product(name: "VoxCore", package: voxPackage),
-            .product(name: "VoxEngine", package: voxPackage),
-            .product(name: "VoxAppleSpeech", package: voxPackage),
-        ],
-        path: src + "HudsonVoice"
+if voiceEnabled {
+    let voxPackage = appendGitDependency(
+        to: &dependencies,
+        url: "https://github.com/arach/vox.git",
+        envPrefix: "HUDSON_VOX"
     )
-)
-targets.append(
-    .testTarget(
-        name: "HudsonVoiceTests",
-        dependencies: [
-            "HudsonVoice",
-            .product(name: "VoxEngine", package: voxPackage),
-            .product(name: "VoxAppleSpeech", package: voxPackage),
-        ],
-        path: tst + "HudsonVoiceTests"
+    products.append(hudsonLibrary(name: "HudsonVoice", targets: ["HudsonVoice"]))
+    targets.append(
+        .target(
+            name: "HudsonVoice",
+            dependencies: [
+                "HudsonUI",
+                "HudsonObservability",
+                .product(name: "VoxCore", package: voxPackage),
+                .product(name: "VoxEngine", package: voxPackage),
+                .product(name: "VoxAppleSpeech", package: voxPackage),
+            ],
+            path: src + "HudsonVoice"
+        )
     )
-)
+    targets.append(
+        .testTarget(
+            name: "HudsonVoiceTests",
+            dependencies: [
+                "HudsonVoice",
+                .product(name: "VoxEngine", package: voxPackage),
+                .product(name: "VoxAppleSpeech", package: voxPackage),
+            ],
+            path: tst + "HudsonVoiceTests"
+        )
+    )
+}
 
 if terminalEnabled {
     products.append(hudsonLibrary(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
@@ -294,14 +299,17 @@ if terminalEnabled {
     demoSwiftSettings.append(.define("HUDSON_CANVAS"))
 }
 
-targets.append(
-    .executableTarget(
-        name: "HudsonKitDemo",
-        dependencies: demoDependencies,
-        path: demo + "HudsonKitDemo",
-        swiftSettings: demoSwiftSettings
+// The demo has a voice tab, so it only exists with voice.
+if voiceEnabled {
+    targets.append(
+        .executableTarget(
+            name: "HudsonKitDemo",
+            dependencies: demoDependencies,
+            path: demo + "HudsonKitDemo",
+            swiftSettings: demoSwiftSettings
+        )
     )
-)
+}
 
 targets.append(
     .executableTarget(
