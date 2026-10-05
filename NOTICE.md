@@ -1,7 +1,10 @@
 # Notice
 
+Hudson
+Copyright 2026 Arach Tchoupani
+
 Third-party material Hudson depends on that carries its own terms. Hudson's own
-code is licensed under [FSL-1.1-MIT](./LICENSE.md); nothing below changes that,
+code is licensed under [Apache-2.0](./LICENSE.md); nothing below changes that,
 and nothing below is legal advice — the licenses linked here are the authority.
 
 ## Speech recognition model — HudsonVoice

@@ -279,10 +279,8 @@ dragging and arrow-key resizing.
 
 ## License
 
-Licensed under the [Functional Source License, Version 1.1, MIT Future License](./LICENSE.md) (FSL-1.1-MIT).
+Licensed under the [Apache License, Version 2.0](./LICENSE.md) (Apache-2.0).
 
-You may use, modify, and redistribute this software for any purpose other than a Competing Use — broadly, offering a commercial product or service that substitutes for or replicates this SDK's functionality. Internal use, non-commercial research, and building applications on top of Hudson are explicitly permitted.
-
-On the second anniversary of each release, that release automatically converts to the MIT License.
+You may use, modify, and redistribute HudsonKit, including in commercial products, subject to the Apache 2.0 license terms. No separate commercial permission is required.
 
 Copyright 2026 Arach Tchoupani.

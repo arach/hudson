@@ -12,7 +12,7 @@
     "streaming"
   ],
   "homepage": "https://github.com/arach/hudson/tree/main/packages/web/ai-backends#readme",
-  "license": "FSL-1.1-MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -52,7 +52,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE.md",
+    "NOTICE"
   ],
   "repository": {
     "type": "git",

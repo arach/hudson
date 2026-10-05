@@ -1,8 +1,8 @@
 {
   "name": "@hudsonkit/admin",
   "version": "0.1.0",
-  "description": "Schema-driven operator admin — declare resources with Zod; render HTML tables and actions without coupling to domain stores.",
-  "license": "FSL-1.1-MIT",
+  "description": "Schema-driven operator admin \u2014 declare resources with Zod; render HTML tables and actions without coupling to domain stores.",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,7 +14,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE.md",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsup",

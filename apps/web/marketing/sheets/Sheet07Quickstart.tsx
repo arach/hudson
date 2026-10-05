@@ -58,7 +58,7 @@ const FOOTER_COLS: { h: string; links: { label: string; href: string }[] }[] = [
   {
     h: 'Legal',
     links: [
-      { label: 'License (MINE)', href: '/license' },
+      { label: 'License (Apache 2.0)', href: '/license' },
       { label: 'Contributing', href: `${GITHUB_URL}/blob/main/CONTRIBUTING.md` },
       { label: 'Security', href: `${GITHUB_URL}/security` },
     ],
@@ -76,7 +76,7 @@ export function Sheet07Quickstart() {
       footer={{
         left: ['SHEET', '08 / 08'],
         mid: 'HUDSONKIT — PRODUCT SPEC → WORKING WORKSPACE',
-        right: ['LICENSE', 'MINE'],
+        right: ['LICENSE', 'Apache 2.0'],
       }}
     >
       <div style={{ maxWidth: 1300, margin: '96px auto 0' }}>
