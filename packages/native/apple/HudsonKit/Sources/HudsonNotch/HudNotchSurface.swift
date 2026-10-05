@@ -23,7 +23,11 @@ public struct HudNotchSurface: View {
             silhouetteBody(shape)
                 .silhouetteFrame(width: shape.width, height: shape.height)
                 .onTapGesture {
-                    if !controller.isExpanded { controller.expand() }
+                    if controller.showsScene {
+                        controller.scene?.onTap?()
+                    } else if !controller.isExpanded {
+                        controller.expand()
+                    }
                 }
 
             // Both layers stay mounted and cross on explicit timing, so the
@@ -43,6 +47,16 @@ public struct HudNotchSurface: View {
                 .animation(showsCard ? HudNotchMotion.contentIn : HudNotchMotion.contentOut, value: showsCard)
                 .allowsHitTesting(showsCard)
                 .accessibilityHidden(!showsCard)
+
+            sceneContent
+                .mask(alignment: .top) {
+                    HudNotchSilhouetteShape(shoulder: shape.shoulder, bottomRadius: shape.bottom)
+                        .silhouetteFrame(width: shape.width, height: shape.height)
+                }
+                .modifier(HudNotchReveal(amount: showsScene ? 0 : 1, reduceMotion: reduceMotion))
+                .animation(showsScene ? HudNotchMotion.contentIn : HudNotchMotion.contentOut, value: showsScene)
+                .allowsHitTesting(showsScene)
+                .accessibilityHidden(!showsScene)
         }
         .silhouetteFrame(width: shape.width, height: shape.height, alignment: .top)
         .opacity(shape.opacity)
@@ -59,13 +73,16 @@ public struct HudNotchSurface: View {
         .animation(HudMotion.ifAllowed(controller.isExpanded ? HudNotchMotion.open : HudNotchMotion.close, reduceMotion: reduceMotion), value: controller.isExpanded)
         .animation(HudMotion.ifAllowed(HudNotchMotion.resize, reduceMotion: reduceMotion), value: controller.currentPokeOut)
         .animation(HudMotion.ifAllowed(HudNotchMotion.resize, reduceMotion: reduceMotion), value: controller.contentHeight)
+        .animation(HudMotion.ifAllowed(HudNotchMotion.resize, reduceMotion: reduceMotion), value: controller.scene?.size)
+        .animation(HudMotion.ifAllowed(HudNotchMotion.resize, reduceMotion: reduceMotion), value: controller.scene?.id)
         .frame(width: controller.panelSize.width, height: controller.panelSize.height, alignment: .top)
     }
 
     private var theme: HudNotchTheme { controller.theme }
 
-    private var showsCard: Bool { controller.isPresented && controller.isExpanded }
-    private var showsPill: Bool { controller.isPresented && !controller.isExpanded }
+    private var showsScene: Bool { controller.isPresented && controller.showsScene }
+    private var showsCard: Bool { controller.isPresented && controller.isExpanded && !controller.showsScene }
+    private var showsPill: Bool { controller.isPresented && !controller.isExpanded && !controller.showsScene }
 
     // MARK: Silhouette
 
@@ -96,6 +113,17 @@ public struct HudNotchSurface: View {
                 shoulder: 0,
                 bottom: config.bottomRadius,
                 opacity: controller.notchInfo.isVirtual ? 0 : 1
+            )
+        }
+
+        if controller.showsScene, let scene = controller.scene {
+            let size = scene.size
+            let open = size.contentHeight > 0
+            return Silhouette(
+                width: size.width,
+                height: height + size.contentHeight,
+                shoulder: island ? (open ? -20 : -height / 2) : config.topOuterRadius,
+                bottom: open ? size.bottomRadius : (island ? height / 2 : config.bottomRadius)
             )
         }
 
@@ -151,6 +179,9 @@ public struct HudNotchSurface: View {
     /// the pill emerges already dressed.
     private var look: HudNotchLook {
         let appearance = controller.configuration.appearance
+        if showsScene, let scene = controller.scene {
+            return scene.size.contentHeight > 0 ? appearance.card : appearance.pill
+        }
         return showsCard ? appearance.card : appearance.pill
     }
 
@@ -435,6 +466,23 @@ public struct HudNotchSurface: View {
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: Scene
+
+    /// The host's scene: its views on the wings, its body below. Kept after
+    /// `present(nil)` so it fades out with the shape.
+    @ViewBuilder
+    private var sceneContent: some View {
+        if let scene = controller.scene ?? controller.lastScene {
+            HudNotchSceneLayout(
+                scene: scene,
+                notchGap: controller.notchGap,
+                shellHeight: controller.shellHeight,
+                reduceMotion: reduceMotion
+            )
+            .accessibilityLabel(scene.accessibilityLabel.isEmpty ? controller.copy.name : scene.accessibilityLabel)
+        }
     }
 
     // MARK: Pieces
