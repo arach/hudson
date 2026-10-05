@@ -1,30 +1,37 @@
-import { visit } from "unist-util-visit";
-import type { Plugin } from "unified";
-import type { Root, Link } from "mdast";
+import { existsSync, statSync } from 'node:fs';
+import path from 'node:path';
+import { visit } from 'unist-util-visit';
+import type { Plugin } from 'unified';
+import type { Root } from 'mdast';
+import { getAllSlugs } from './docs';
+import { REPO_ROOT } from './repoRoot';
+import { REPOSITORY_URL, docPath } from '../../site/seo';
 
-/**
- * Remark plugin that rewrites relative .md links to /docs/<slug> routes.
- * Supports both flat and nested paths:
- *   ./quickstart.md        → /docs/quickstart
- *   ./api.md#hooks         → /docs/api#hooks
- *   ../sdk/hooks.md        → /docs/npm/sdk/hooks (resolved relative to doc)
- *   sdk/hooks.md           → /docs/npm/sdk/hooks
- */
-const remarkRewriteLinks: Plugin<[], Root> = () => {
-  return (tree) => {
-    visit(tree, "link", (node: Link) => {
-      const url = node.url;
-      if (!url) return;
+let publishedSlugs: Set<string> | undefined;
 
-      // Only rewrite relative .md links (not absolute or external)
-      const match = url.match(/^(\.\.?\/)?([^#:]+)\.md(#.*)?$/);
-      if (match) {
-        const slug = match[2].replace(/^\.\//, "");
-        const hash = match[3] ?? "";
-        node.url = `/docs/${slug}${hash}`;
-      }
-    });
-  };
+/** Resolve Markdown links relative to their source file, not the public page directory. */
+export function rewriteDocLink(url: string, slug: string): string {
+  if (!url || /^(?:[a-z][a-z\d+.-]*:|\/|#)/i.test(url)) return url;
+  const [, file, suffix = ''] = url.match(/^([^?#]+)([?#].*)?$/) ?? [];
+  if (!file) return url;
+  const target = path.resolve(REPO_ROOT, 'docs', path.dirname(slug), file);
+  const repoPath = path.relative(REPO_ROOT, target).split(path.sep).join('/');
+  // Only link to source we can verify. A missing target remains visible to link audits.
+  if (repoPath.startsWith('../') || !existsSync(target)) return url;
+  publishedSlugs ??= new Set(getAllSlugs());
+  if (repoPath.startsWith('docs/') && repoPath.endsWith('.md')) {
+    const docSlug = repoPath.slice('docs/'.length, -'.md'.length);
+    if (publishedSlugs.has(docSlug)) return `${docPath(docSlug)}${suffix}`;
+  }
+  const kind = statSync(target).isDirectory() ? 'tree' : 'blob';
+  const encodedPath = repoPath.split('/').map(encodeURIComponent).join('/');
+  return `${REPOSITORY_URL}/${kind}/main/${encodedPath}${suffix}`;
+}
+
+const remarkRewriteLinks: Plugin<[{ slug: string }], Root> = ({ slug }) => tree => {
+  visit(tree, ['link', 'definition'], node => {
+    if (node.type === 'link' || node.type === 'definition') node.url = rewriteDocLink(node.url, slug);
+  });
 };
 
 export default remarkRewriteLinks;

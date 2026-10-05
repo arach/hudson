@@ -1,10 +1,12 @@
 import type { CSSProperties } from 'react';
+import { canonicalUrl } from '../../site/seo';
 import Link from 'next/link';
 import { Eyebrow } from '@/marketing/primitives/Eyebrow';
 import { DEFAULTS } from '@/marketing/theme/defaults';
 import { resolveThemeStyle } from '@/marketing/theme/resolve';
 
 export const metadata = {
+  alternates: { canonical: canonicalUrl('/license/') },
   title: 'License (MINE) · HudsonKit',
   description:
     'The HudsonKit license — open by default. If you\'re going to use it commercially, talk to me first.',

@@ -1,3 +1,4 @@
+import { canonicalUrl, docPath, isIndexableDoc } from "../../../site/seo";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getAllDocs, getAllSlugs, getDocBySlug } from "@/app/lib/docs";
@@ -24,6 +25,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${doc.title} — HudsonKit Docs`,
     description: doc.description,
+    alternates: { canonical: canonicalUrl(docPath(fullSlug)) },
+    ...(!isIndexableDoc(fullSlug) ? { robots: { index: false, follow: true } } : {}),
   };
 }
 
@@ -34,7 +37,7 @@ export default async function DocPage({ params }: Props) {
   if (!doc) notFound();
 
   const [html, toc, docs] = await Promise.all([
-    renderMarkdown(doc.content),
+    renderMarkdown(doc.content, fullSlug),
     Promise.resolve(extractToc(doc.content)),
     Promise.resolve(getAllDocs()),
   ]);

@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
-import { getAllDocs } from "@/app/lib/docs";
+import { DOCS_HOME } from "../../site/seo";
 
 export default function DocsIndex() {
-  const docs = getAllDocs();
-  const first = docs[0];
-  redirect(`/docs/${first?.slug ?? "overview"}`);
+  redirect(DOCS_HOME);
 }

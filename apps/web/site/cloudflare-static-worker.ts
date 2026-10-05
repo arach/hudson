@@ -1,8 +1,7 @@
 import { loadToolset } from '../app/api/ai/toolsets';
+import { APP_HOST, MARKETING_HOSTS, isNoIndexPath, siteRedirect } from './seo';
 
 const DEFAULT_WORKERS_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct';
-const APP_HOST = 'app.hudsonkit.com';
-const MARKETING_HOSTS = new Set(['hudsonkit.com', 'www.hudsonkit.com']);
 // Product SPAs vendored into site/out/<name>/ and served at /<name>.
 // Directory + file paths resolve via ASSETS; anything else under the root
 // is a client-side route and falls back to the product's index.html.
@@ -184,7 +183,7 @@ function serveAppRoot(request: Request, env: Env) {
 function serveMarketingRoot(request: Request, env: Env) {
   const url = new URL(request.url);
   const host = url.hostname.toLowerCase();
-  if (!MARKETING_HOSTS.has(host) || url.pathname !== '/') {
+  if (!MARKETING_HOSTS.includes(host) || url.pathname !== '/') {
     return null;
   }
 
@@ -195,7 +194,7 @@ function serveMarketingRoot(request: Request, env: Env) {
 async function serveProductRoute(request: Request, env: Env) {
   const url = new URL(request.url);
   const host = url.hostname.toLowerCase();
-  if (!MARKETING_HOSTS.has(host) || request.method !== 'GET') {
+  if (!MARKETING_HOSTS.includes(host) || request.method !== 'GET') {
     return null;
   }
 
@@ -281,9 +280,29 @@ async function handleAIChat(request: Request, env: Env) {
   });
 }
 
+function withIndexingPolicy(response: Response, url: URL): Response {
+  if (url.hostname !== APP_HOST && !isNoIndexPath(url.pathname)) return response;
+  const result = new Response(response.body, response);
+  // Keep the stricter existing embed/preview nofollow policy if supplied.
+  if (!result.headers.has('X-Robots-Tag')) {
+    result.headers.set('X-Robots-Tag', /^\/(?:preview|embed)(?:\/|$)/.test(url.pathname) ? 'noindex, nofollow' : 'noindex, follow');
+  }
+  return result;
+}
+
 export default {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
+    const redirect = siteRedirect(url);
+    if (redirect) return Response.redirect(redirect.href, 308);
+
+    // The application host has no indexable marketing inventory of its own.
+    if (url.hostname === APP_HOST && url.pathname === '/robots.txt') {
+      return new Response('User-agent: *\nAllow: /\n', { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+    }
+    if (url.hostname === APP_HOST && url.pathname === '/sitemap.xml') {
+      return new Response('Not found', { status: 404, headers: { 'X-Robots-Tag': 'noindex' } });
+    }
 
     if (url.pathname === '/api/ai/health') {
       return Response.json({
@@ -298,7 +317,7 @@ export default {
     }
 
     const appRootResponse = serveAppRoot(request, env);
-    if (appRootResponse) return appRootResponse;
+    if (appRootResponse) return withIndexingPolicy(await appRootResponse, url);
 
     const marketingRootResponse = serveMarketingRoot(request, env);
     if (marketingRootResponse) return marketingRootResponse;
@@ -306,6 +325,6 @@ export default {
     const productResponse = await serveProductRoute(request, env);
     if (productResponse) return productResponse;
 
-    return env.ASSETS.fetch(request);
+    return withIndexingPolicy(await env.ASSETS.fetch(request), url);
   },
 };
