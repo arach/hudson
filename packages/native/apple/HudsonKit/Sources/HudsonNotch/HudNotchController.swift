@@ -50,6 +50,11 @@ public final class HudNotchController: ObservableObject {
     @Published public private(set) var nudgeSerial = 0
     @Published public private(set) var stage: HudNotchStage
     @Published public private(set) var configuration: HudNotchConfiguration
+    /// Host content shown in place of the stage. See `present(_:)`.
+    @Published public private(set) var scene: HudNotchScene?
+    /// Room the scenes shown so far need. It only grows, so the panel never
+    /// shrinks under a shape that is still animating down.
+    @Published private var sceneRoom: CGSize = .zero
 
     /// Called on the main actor with each answer or dismissal, after it has
     /// been sent to the socket (when serving).
@@ -64,6 +69,10 @@ public final class HudNotchController: ObservableObject {
     private var hoverActivationTask: Task<Void, Never>?
     private var collapseTask: Task<Void, Never>?
     private var retractTask: Task<Void, Never>?
+    private var keyMonitor: Any?
+    /// The scene last presented, kept so its content can fade out after
+    /// `present(nil)`.
+    public private(set) var lastScene: HudNotchScene?
 
     /// - Parameter persistenceKey: a `UserDefaults` key for tuned
     ///   configuration. Nil keeps tuning in memory only.
@@ -86,16 +95,26 @@ public final class HudNotchController: ObservableObject {
         if let screenObserver {
             NotificationCenter.default.removeObserver(screenObserver)
         }
+        if let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
+        }
     }
 
     // MARK: Derived geometry
 
     public var panelSize: CGSize {
-        HudNotchMetrics.panelSize(
+        let base = HudNotchMetrics.panelSize(
             notchWidth: notchInfo.notchWidth,
             notchHeight: notchInfo.notchHeight,
             configuration: configuration
         )
+        return CGSize(width: max(base.width, sceneRoom.width), height: max(base.height, sceneRoom.height))
+    }
+
+    /// The scene is on screen: one is presented and no activity card is
+    /// open over it.
+    public var showsScene: Bool {
+        scene != nil && !(isExpanded && stage.focused != nil)
     }
 
     public var displayMode: HudNotchDisplayMode {
@@ -337,8 +356,11 @@ public final class HudNotchController: ObservableObject {
         isHovered = hovered
         hoverActivationTask?.cancel()
         collapseTask?.cancel()
+        scene?.onHover?(hovered)
 
         if hovered {
+            // A scene opens on its own terms; hovering it never swaps in the stage.
+            guard scene == nil else { return }
             let delay = configuration.hoverActivationDelaySeconds
             hoverActivationTask = Task { [weak self] in
                 if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
@@ -381,6 +403,88 @@ public final class HudNotchController: ObservableObject {
     private func setExpanded(_ expanded: Bool) {
         guard isExpanded != expanded else { return }
         isExpanded = expanded
+    }
+
+    // MARK: Scenes
+
+    /// Shows host content in the notch in place of the stage, or takes it
+    /// away with nil. Presenting again with a new size morphs the shape;
+    /// a new `id` cross-fades the body.
+    ///
+    /// An activity that asks for attention still opens its card over the
+    /// scene, and the scene returns when the card folds. Hovering never
+    /// opens the stage while a scene is up. Taking the scene away hides the
+    /// notch unless the stage has something on it.
+    public func present(_ scene: HudNotchScene?) {
+        guard let scene else {
+            guard self.scene != nil else { return }
+            self.scene = nil
+            releaseFocus()
+            updateKeyMonitor()
+            if stage.activities.isEmpty { hide() }
+            return
+        }
+        refreshNotchInfo()
+        let room = HudNotchMetrics.sceneRoom(
+            width: scene.size.width,
+            contentHeight: scene.size.contentHeight,
+            notchHeight: notchInfo.notchHeight,
+            configuration: configuration
+        )
+        let grown = CGSize(width: max(sceneRoom.width, room.width), height: max(sceneRoom.height, room.height))
+        if grown != sceneRoom {
+            sceneRoom = grown
+            updatePanelFrame(animated: false)
+        }
+        lastScene = scene
+        self.scene = scene
+        if !scene.takesKeys { releaseFocus() }
+        updateKeyMonitor()
+        show()
+    }
+
+    /// Makes the notch key so the scene hears keys, without activating the
+    /// app. Call it from a click in the scene.
+    public func focusScene() {
+        guard let panel, showsScene else { return }
+        panel.makeKey()
+    }
+
+    /// Hands the keyboard back to the app in front, if the notch has it.
+    public func releaseFocus() {
+        guard let panel, panel.isKeyWindow else { return }
+        // A non-activating panel can't resign key to another app directly;
+        // ordering it out lets the window server give key back.
+        panel.orderOut(nil)
+        if isVisible { panel.orderFrontRegardless() }
+    }
+
+    /// True while the notch panel is the key window.
+    public var hasFocus: Bool { panel?.isKeyWindow ?? false }
+
+    private func updateKeyMonitor() {
+        let wants = scene?.takesKeys ?? false
+        if wants, keyMonitor == nil {
+            keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
+                // Local monitors run on the main thread.
+                nonisolated(unsafe) let event = event
+                let consumed = MainActor.assumeIsolated { self?.routeKey(event) ?? false }
+                return consumed ? nil : event
+            }
+        } else if !wants, let keyMonitor {
+            NSEvent.removeMonitor(keyMonitor)
+            self.keyMonitor = nil
+        }
+    }
+
+    /// True when the scene consumed the event.
+    private func routeKey(_ event: NSEvent) -> Bool {
+        guard let panel, event.window === panel, showsScene, let scene else { return false }
+        switch event.type {
+        case .keyDown: return scene.onKeyDown?(event) ?? false
+        case .flagsChanged: return scene.onFlagsChanged?(event) ?? false
+        default: return false
+        }
     }
 
     // MARK: Screen

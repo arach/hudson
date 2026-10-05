@@ -151,6 +151,41 @@ let notch = HudNotchController(persistenceKey: "MyApp.notch", copy: copy, theme:
 
 `HudNotchTuner(controller:)` is a settings view for the shape: pokeout, radii, overlap, card heights, timing and display mode (automatic, notch or island). Changes persist under the `persistenceKey`.
 
+## Scenes
+
+Activities cover status and questions. A host that needs its own view on the notch, such as a live meter, a one-line status under the housing or a small form, presents a `HudNotchScene` instead. The scene uses the same silhouette, panel and motion as activities. It is not a second notch window.
+
+A scene has views for the two wings and a body below them:
+
+| `size.contentHeight` | What shows |
+| --- | --- |
+| 0 | The wings alone. |
+| Short, such as 26 pt | A chin: one line under the notch. |
+| Taller | The notch opens as far as the content needs. |
+
+Changing `size` morphs the shape with `resize`. A new `id` cross-fades the body while the wings stay put, so a mark on a wing carries across.
+
+```swift
+notch.present(HudNotchScene(
+    id: "status",
+    size: .init(width: 400, contentHeight: 26),
+    onTap: { showDetails() }
+) {
+    MyMark()                       // the left wing
+} trailing: {
+    Text("3 live").font(.caption.monospaced())
+} content: {
+    Text("Recording on studio")
+})
+notch.present(nil)                 // take it down
+```
+
+- **Precedence.** An activity that asks for attention opens over the scene. The scene comes back when that card folds. Hover never opens the stage while a scene is up, and `onHover` reports the pointer instead.
+- **Keys.** The notch never takes key on its own. Give a scene `onKeyDown` or `onFlagsChanged` and it receives keys once the person clicks into it, or once you call `focusScene()`. Return true to consume an event. `releaseFocus()` gives the keyboard back, and so does presenting a scene without key handlers.
+- **Room.** The panel grows to fit the largest scene shown so far, so it never shrinks under a shape that is still animating.
+- **Keycaps.** `HudNotchKeycaps` draws a chord as hairline caps, with dashed slots for keys still to come and the last key lit with a flat wash. `HudNotchKeycapStyle(theme:)` derives its colors from the theme. `HudNotchKeys` (in HudsonNotchCore) names key presses and orders modifiers ⌃⌥⇧⌘, so a host can record and test a shortcut without a screen.
+- **Previews.** `HudNotchScenePreview(scene:theme:)` draws a scene still, on its silhouette, for snapshots and design reviews.
+
 ## Motion
 
 The notch is one black silhouette, `HudNotchSilhouetteShape`, drawn at different sizes for each state, so every change is a morph rather than a crossfade:
@@ -192,4 +227,4 @@ There are three presets: `solid` (the default, opaque like the housing), `smoked
 swift test --filter HudsonNotchCoreTests
 ```
 
-The tests cover wire decoding, including the legacy shape, the stage's attention rules, metrics, lenient configuration decoding, and a socket round trip with ask, respond and subscribe. The socket tests use a short `/tmp` path because `sun_path` holds only 104 bytes.
+The tests cover wire decoding, including the legacy shape, the stage's attention rules, metrics, lenient configuration decoding, and a socket round trip with ask, respond and subscribe, plus key naming and scene room. The socket tests use a short `/tmp` path because `sun_path` holds only 104 bytes.
