@@ -1,106 +1,101 @@
-# Hudson
+[![HudsonKit — app shells, canvases, and tools. Build the interesting part.](./docs/images/hudsonkit-header.svg)](https://hudsonkit.com)
 
 [![hudsonkit npm version](https://img.shields.io/npm/v/hudsonkit?label=hudsonkit)](https://www.npmjs.com/package/hudsonkit)
 [![@hudsonkit/ai npm version](https://img.shields.io/npm/v/%40hudsonkit%2Fai?label=%40hudsonkit%2Fai)](https://www.npmjs.com/package/@hudsonkit/ai)
-[![CI](https://github.com/arach/hudson/actions/workflows/ci.yml/badge.svg)](https://github.com/arach/hudson/actions/workflows/ci.yml)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE.md)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-55bfc9)](./LICENSE.md)
 
-![Hudson workspace with Shaper, Logo Designer, and Notepad apps sharing chrome](./docs/images/hudson-hero.png)
+**Build your app. HudsonKit supplies the workspace around it.**
 
-An opinionated app shell for browser-based multi-app workspaces. Chrome once, apps plug in.
+Navigation, side panels, command palettes, status bars, draggable windows, and an infinite canvas. Compose them into a single-app shell or a workspace where several apps share the same chrome. Your app owns its state and content; the shell handles the surrounding interface.
 
-## What this is
+[Explore HudsonKit](https://hudsonkit.com) · [Try the workspace](https://hudsonkit.com/demo/) · [Quickstart](./docs/quickstart.md) · [API reference](./docs/api.md)
 
-Hudson is a **shell**, not a framework. It owns the workspace chrome — nav bar, side panels, command palette, terminal, status bar, canvas pan/zoom — and hosts **apps** that plug in via a small `HudsonApp` interface: a Provider for state, slot components for the shell to render, and hooks the shell reads for labels, search, status.
+## Built with HudsonKit
 
-Two modes:
+[![ARC’s live diagram editor: connected architecture nodes on a canvas, with an inspector, drawing tools, and status bar.](./docs/images/arc-showcase.png)](https://hudsonkit.com/arc/)
 
-- **`AppShell`** — the default. One app, full chrome. Best for single-purpose products.
-- **`WorkspaceShell`** — multi-app canvas. Apps float as windows on a shared dotted-grid workspace. The screenshot above: Shaper (vector editing), Logo Designer, and Notepad all sharing one set of chrome.
+**[ARC](https://hudsonkit.com/arc/)** is a diagram editor built on HudsonKit’s `AppShell`. ARC supplies the diagram model, drawing tools, and inspector content; Hudson supplies the shell that holds them together. The screenshot shows the running editor with its built-in example diagram.
 
-## Install
+[Try ARC →](https://hudsonkit.com/arc/) · [Read the source →](https://github.com/arach/arc)
 
-```sh
-bun add hudsonkit      # or: npm install hudsonkit
-```
-
-`hudsonkit` is the shell + primitives. `@hudsonkit/ai` is an optional, provider-neutral AI backend (pi-ai and Vercel AI adapters) — add it only when your app needs the AI panel or agent surface:
+## Start building
 
 ```sh
-bun add @hudsonkit/ai
+bun add hudsonkit
 ```
 
-Peers: React 19 (`react`/`react-dom`). HudsonKit owns its Iconoir icon runtime; terminal and editor extras (CodeMirror, xterm) are optional peers, pulled in only if you use those surfaces.
+Import the prebuilt styles once in your app entry point:
 
-New here? The [quickstart](./docs/quickstart.md) mounts `AppShell` with a minimal app in a few minutes; [building apps](./docs/building-apps.md) covers the full `HudsonApp` contract.
+```tsx
+import 'hudsonkit/styles';
+```
 
-## Why
+A plain React component can become a Hudson app:
 
-I build a lot of small apps. Each one was ~70% chrome: sidebar, settings, command palette, status bar, keyboard shortcuts, persistent-state plumbing, AI panel. Hudson is that chrome extracted as a primitive, so every new project starts from *build the interesting part* instead of *build yet another sidebar*.
+```tsx
+'use client';
 
-## Case study: Premotion
+import { AppShell, createEmbedApp } from 'hudsonkit/app-shell';
 
-[![Premotion catalog studio](./docs/images/premotion-case-study.png)](./docs/case-study-premotion.md)
+const { app } = createEmbedApp({
+  id: 'hello',
+  title: 'My first app',
+  component: () => <div style={{ padding: 24 }}>Hello, Hudson.</div>,
+});
 
-**[Full write-up →](./docs/case-study-premotion.md)**
+export default function Page() {
+  return <AppShell app={app} />;
+}
+```
 
-A video catalog browser built on Hudson SDK. Fresh Next.js 16 + React 19 project, imports `hudsonkit/app-shell`, fills in a single `HudsonApp` with Provider + slots, ships. Left panel + search + status bar + inspector + URL-driven filter state all came from the shell — the only real work was the catalog logic itself.
+For an app with its own state, panels, and commands, implement `HudsonApp`: a **Provider** owns state, **slots** supply content, and **hooks** connect commands, search, and status to the shell. Follow the [quickstart](./docs/quickstart.md) or the [building apps guide](./docs/building-apps.md).
 
-The case study walks through the build *and* the real friction points we hit consuming the SDK from outside its monorepo (Tailwind scanning, symlink shape, barrel exports, `'use client'` directives) — and what got fixed vs. what's still on the follow-up list.
+The web SDK targets React 19. Install a published package or a sealed tarball when consuming it outside this repository. See the [consumer setup rules](./AGENTS.md#consuming-hudsonkit-externally) for Next.js and Tailwind configuration.
 
-## Native Canvas
+## Choose your surface
 
-Hudson ships **Canvas** — a native macOS spatial canvas for tmux sessions,
-terminals, and workspace artifacts. The surface is embeddable via `HudsonCanvas`;
-Scout, Talkie, Fabric, or your own app can host one too.
+| Surface | Use it for |
+| --- | --- |
+| **`AppShell`** | One app with navigation, panels, commands, and status. |
+| **`WorkspaceShell`** | Multiple apps in a shared canvas or panel workspace. |
+| **Canvas and windows** | Pan, zoom, drag, resize, and persist window positions. |
+| **Optional AI backends** | Provider-neutral AI integration through [`@hudsonkit/ai`](./docs/ai.md). |
+| **Apple-native SDKs** | Swift packages for [macOS shells](./docs/macos-shell.md), [iOS shells](./docs/ios-shell.md), and [Hudson Canvas](./docs/hudson-canvas.md). |
+
+This repository includes the SDKs, the web workspace, developer tools, and **Canvas**, a native macOS app for terminals and workspace artifacts.
+
+## Work on Hudson
 
 ```sh
-apps/canvas/scripts/run-app.sh
-```
-
-See [Hudson Canvas](./docs/hudson-canvas.md) for the SDK boundary.
-
-## Orientation
-
-```
-apps/web/                          # The Hudson workspace (Next.js 16 + marketing + deploy)
-apps/web/app/apps/                 # Web app examples (hudson-docs, stage-design, …)
-apps/canvas/                       # Native Canvas macOS product (CanvasApp host)
-packages/web/hudsonkit/            # Shell + primitives — published as `hudsonkit`
-packages/web/ai-backends/          # Provider-neutral AI backends — published as `@hudsonkit/ai`
-packages/web/admin/                # Schema-driven operator admin package
-packages/tools/create-hudson-app/  # `create-hudson-app` scaffolder
-packages/tools/hkit/               # `@hudsonkit/hkit` design & diagnostics CLI
-packages/native/apple/HudsonKit/   # Apple-native Swift package
-packages/services/hudson-relay/    # Terminal relay service
-docs/                              # Architecture, case study, builder notes
-```
-
-Dev:
-
-```bash
+git clone https://github.com/arach/hudson.git
+cd hudson
 bun install
-bun dev           # Hudson workspace on :3500
+bun dev
 ```
 
-## State
+Open [localhost:3500](http://localhost:3500) for the web workspace. For the native Canvas app, see [Hudson Canvas](./docs/hudson-canvas.md).
 
-Hudson is **built in the open** and now **published to npm** — both `hudsonkit` and the optional `@hudsonkit/ai` ship real releases. Bump each package's `version` and `CHANGELOG.md` when you're ready to cut a release, merge to `main`, run the **CI** workflow on `main` from the Actions tab and wait for it to pass on that exact commit, then run the **Publish npm packages** GitHub workflow from `main` with the full commit SHA. Stable releases use the `latest` dist-tag; prereleases require an explicit non-`latest` tag. This monorepo stays the source of truth — the packages are built and versioned from here.
+| Path | Contents |
+| --- | --- |
+| `packages/web/hudsonkit/` | Web SDK, shell, and UI primitives |
+| `packages/web/ai-backends/` | Optional AI backends |
+| `packages/web/admin/` | Schema-driven admin surfaces |
+| `packages/native/apple/HudsonKit/` | Apple-native Swift package |
+| `packages/tools/` | Scaffolding and diagnostics tools |
+| `apps/web/` | Web workspace, example apps, and website |
+| `apps/canvas/` | Native macOS Canvas app |
+| `docs/` | Guides and reference material |
 
-It's still **0.x**, so the surface moves: the code is legible and the commits are explicit, but APIs can change between releases — pin a version and skim the changelog before bumping. The [Premotion case study](./docs/case-study-premotion.md) documents the real friction of consuming the SDK from outside its monorepo (Tailwind scanning, symlink shape, barrel exports, `'use client'`) — some of it since fixed, some still on the follow-up list.
+## Documentation
 
-If you're looking at this to understand *how I think about building apps*, start with the [overview](./docs/overview.md) and the [case study](./docs/case-study-premotion.md).
+- [Overview](./docs/overview.md) and [architecture](./docs/architecture.md)
+- [Building apps](./docs/building-apps.md) and [API reference](./docs/api.md)
+- [Drag, resize, and pan performance](./docs/perf-drag-resize-patterns.md)
+- [Agent reference](./docs/agent/overview.agent.md)
+- [Contributing](./CONTRIBUTING.md)
 
-## Stack
+HudsonKit is still **0.x**. Review the [web SDK changelog](./packages/web/hudsonkit/CHANGELOG.md) when upgrading; APIs may change between releases.
 
-React 19 · Next.js 16 · Tailwind v4 · bun · TypeScript
+## License
 
-## Docs
-
-- [Overview](./docs/overview.md) — what Hudson is, the mental model
-- [Architecture](./docs/architecture.md) — how the shell is structured
-- [Case study: Premotion](./docs/case-study-premotion.md) — the real consumption story
-- [Building apps](./docs/building-apps.md) — the `HudsonApp` contract in detail
-- [Perf patterns](./docs/perf-drag-resize-patterns.md) — drag/resize/pan tricks worth reusing
-- [For agents](./docs/agent/overview.agent.md) — LLM-oriented reference
-- [Notice](./NOTICE.md) — third-party terms Hudson pulls in, including the NVIDIA / FluidInference Parakeet weights `HudsonVoice` downloads at runtime
+The source in this repository is licensed under [Apache 2.0](./LICENSE.md). See [NOTICE](./NOTICE.md) for third-party notices and separately licensed assets. Previously published package versions retain the license included with those releases.
