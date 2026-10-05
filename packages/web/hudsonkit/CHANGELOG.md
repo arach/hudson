@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### License
+
+- Release project-owned source under Apache-2.0, replacing FSL-1.1-MIT. Previously published versions retain their included license.
+
 ### Added
 
 - Add the framework-free `hudsonkit/agent-composer` and

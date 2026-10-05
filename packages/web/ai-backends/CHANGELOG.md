@@ -1,5 +1,9 @@
 # @hudsonkit/ai
 
+## [Unreleased]
+
+- Release project-owned source under Apache-2.0, replacing FSL-1.1-MIT. Previously published versions retain their included license.
+
 ## 0.3.0
 
 ### Minor Changes

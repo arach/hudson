@@ -3,7 +3,7 @@
 [![hudsonkit npm version](https://img.shields.io/npm/v/hudsonkit?label=hudsonkit)](https://www.npmjs.com/package/hudsonkit)
 [![@hudsonkit/ai npm version](https://img.shields.io/npm/v/%40hudsonkit%2Fai?label=%40hudsonkit%2Fai)](https://www.npmjs.com/package/@hudsonkit/ai)
 [![CI](https://github.com/arach/hudson/actions/workflows/ci.yml/badge.svg)](https://github.com/arach/hudson/actions/workflows/ci.yml)
-[![License: FSL-1.1-MIT](https://img.shields.io/badge/license-FSL--1.1--MIT-blue)](./LICENSE.md)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](./LICENSE.md)
 
 ![Hudson workspace with Shaper, Logo Designer, and Notepad apps sharing chrome](./docs/images/hudson-hero.png)
 

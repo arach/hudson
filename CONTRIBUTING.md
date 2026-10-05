@@ -52,4 +52,4 @@ release lane. Do not assume the npm publish workflow includes it.
 ## License
 
 By contributing you agree that your changes will be licensed under the project
-license: **FSL-1.1-MIT** (see [LICENSE.md](./LICENSE.md)).
+license: **Apache-2.0** (see [LICENSE.md](./LICENSE.md)).

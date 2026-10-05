@@ -7,31 +7,22 @@ import { resolveThemeStyle } from '@/marketing/theme/resolve';
 
 export const metadata = {
   alternates: { canonical: canonicalUrl('/license/') },
-  title: 'License (MINE) · HudsonKit',
-  description:
-    'The HudsonKit license — open by default. If you\'re going to use it commercially, talk to me first.',
+  title: 'License (Apache 2.0) · HudsonKit',
+  description: 'HudsonKit is open source under Apache 2.0, including commercial use.',
 };
 
-const CONTACT_EMAIL = 'arach@tchoupani.com';
-const REVISED = '2026-05-09';
+const REVISED = '2026-10-05';
 
 const OPEN_ITEMS = [
-  'Read the source. Run it locally. Fork it.',
-  'School projects, hackathons, weekend builds, learning by doing.',
-  'File issues, open PRs, tell people about it.',
-  'Build something dumb with it for fun.',
+  'Use HudsonKit for personal projects and commercial products.',
+  'Read, modify, fork, and redistribute the source.',
+  'Build and sell applications using HudsonKit without a license fee.',
 ];
 
-const ASK_FIRST_ITEMS = [
-  'Anything commercial — SaaS, paid product, anything you charge for.',
-  'Forks that get redistributed at scale or rebranded as a product.',
-  'Training a model on this code or anything it generates.',
-];
-
-const OWED_ITEMS = [
-  'A link back if you ship something built on it.',
-  'A line of credit somewhere visible.',
-  'The truth about what you\'re doing.',
+const NOTICE_ITEMS = [
+  'Include a copy of the Apache 2.0 license when redistributing the software.',
+  'Retain applicable copyright, attribution, and NOTICE information.',
+  'Mark modified files with notices stating that you changed them.',
 ];
 
 export default function LicensePage() {
@@ -47,73 +38,41 @@ export default function LicensePage() {
       <PageHeader />
 
       <article style={{ maxWidth: 880, margin: '60px auto 0', padding: '0 32px' }}>
-        <Eyebrow>LIC / MINE · v0 · draft</Eyebrow>
+        <Eyebrow>LIC / APACHE 2.0</Eyebrow>
 
         <h1
           className="h-section"
           style={{ marginTop: 24, marginBottom: 28 }}
         >
-          License <em>(mine)</em>.
+          Open source. <em>Apache 2.0.</em>
         </h1>
 
         <p
           className="subhead"
           style={{ fontSize: 18, lineHeight: 1.55, marginBottom: 56, maxWidth: 700 }}
         >
-          Look — whatever&rsquo;s here, you can have a look. Run it. Hack on it. Build
-          something dumb with it for fun. Just one thing:{' '}
-          <strong style={{ color: 'var(--ink)' }}>
-            if you&rsquo;re going to use it commercially, talk to me first.
-          </strong>{' '}
-          I&rsquo;m not trying to be precious about this — I just want to know who&rsquo;s
-          building on top of my work and how. Most of the time I&rsquo;ll say yes.
+          HudsonKit is free to use, modify, and distribute under the Apache License,
+          Version 2.0. Commercial use is welcome. No separate permission or license
+          fee is required.
         </p>
 
-        <Section num="§1" title="What's open by default">
+        <Section num="§1" title="What you can do">
           <BulletList items={OPEN_ITEMS} />
         </Section>
 
-        <Section num="§2" title="What asks first">
-          <BulletList items={ASK_FIRST_ITEMS} />
+        <Section num="§2" title="Redistribution requirements">
+          <BulletList items={NOTICE_ITEMS} />
         </Section>
 
-        <Section num="§3" title="How to ask">
+        <Section num="§3" title="The full terms">
           <p style={SECTION_P}>
-            One sentence is enough. What you&rsquo;re building, what you&rsquo;d like to do
-            with HudsonKit. I&rsquo;ll write back. Most asks I&rsquo;ll say yes to. I just want to
-            know.
-          </p>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 18, flexWrap: 'wrap' }}>
-            <a
-              className="btn btn--accent"
-              href={`mailto:${CONTACT_EMAIL}?subject=Hudson%20license%20question`}
-            >
-              ✉ ask nicely → {CONTACT_EMAIL}
-            </a>
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
-                letterSpacing: '0.18em',
-                textTransform: 'uppercase',
-                color: 'var(--ink-3)',
-              }}
-            >
-              reply within ~1 wk
-            </span>
-          </div>
-        </Section>
-
-        <Section num="§4" title="What you owe me">
-          <BulletList items={OWED_ITEMS} />
-        </Section>
-
-        <Section num="§5" title="Caveat — this is v0">
-          <p style={SECTION_P}>
-            This is a stub, written in good faith while I figure out the proper license.
-            It&rsquo;ll move toward something codified (FSL, PolyForm, or a custom doc) as
-            the project matures. If you&rsquo;re reading this with a contract in hand and
-            need real certainty, email me and we&rsquo;ll talk like adults.
+            This page summarizes the license. The{' '}
+            <a href="https://github.com/arach/hudson/blob/main/LICENSE.md">full Apache 2.0 license</a>{' '}
+            governs use of Hudson code released under it. Third-party dependencies
+            retain their own licenses; see the{' '}
+            <a href="https://github.com/arach/hudson/blob/main/NOTICE.md">third-party notices</a>.
+            The software is provided without warranties. The license does not
+            grant rights to Hudson trademarks.
           </p>
         </Section>
 
@@ -183,7 +142,7 @@ function PageHeader() {
             background: 'var(--paper-2)',
           }}
         >
-          LICENSE · MINE · v0
+          LICENSE · APACHE 2.0
         </span>
         <span
           style={{
@@ -309,7 +268,7 @@ function SignatureBlock() {
     >
       <SigCell label="Drawn by" value="Arach Tchoupani" />
       <SigCell label="Last revised" value={REVISED} mid />
-      <SigCell label="Revision" value="v0 · draft" />
+      <SigCell label="Revision" value="Apache 2.0" />
     </div>
   );
 }

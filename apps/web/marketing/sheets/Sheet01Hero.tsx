@@ -14,7 +14,7 @@ const STATS: Array<[string, string, string]> = [
   ['Surfaces', '3', 'iOS · macOS · Web'],
   ['Primitives', '8', 'Frame · Nav · Panel · Status · Canvas · Palette · Drawer · Assistant'],
   ['Apps live', '5', 'Talkie · Scout · Linea · Lattices · Vox'],
-  ['License', 'MINE', 'ask me nicely'],
+  ['License', 'Apache 2.0', 'free for commercial use'],
 ];
 
 export function Sheet01Hero() {
