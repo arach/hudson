@@ -1,10 +1,9 @@
 name: CI
 
+# Manual only, so Actions spend stays deliberate: the Apple job bills macOS
+# minutes on this private repo. Run CI from the Actions tab when a change needs
+# it; release.yml requires a successful main run of the commit it publishes.
 on:
-  pull_request:
-  push:
-    branches: [main]
-  workflow_call:
   workflow_dispatch:
 
 concurrency:

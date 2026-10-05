@@ -122,12 +122,19 @@ export interface HudSideNavProps {
   rail?: boolean;
   /** Optional content pinned above the tree (brand row, workspace switch, …). */
   header?: React.ReactNode;
-  /** Compact override for `header`. Falls back to `header` when omitted. */
-  collapsedHeader?: React.ReactNode;
+  /**
+   * Compact override for `header`. Omit it (or pass `undefined`/`null`) to
+   * reuse `header` on the icon rail; pass `false` for no header while
+   * collapsed, e.g. when `HudWindowFrame`'s title bar carries the brand.
+   */
+  collapsedHeader?: React.ReactNode | false;
   /** Optional content pinned below the tree (account, status, actions, …). */
   footer?: React.ReactNode;
-  /** Compact override for `footer`. Falls back to `footer` when omitted. */
-  collapsedFooter?: React.ReactNode;
+  /**
+   * Compact override for `footer`. Omit it to reuse `footer` on the icon rail;
+   * pass `false` for no footer while collapsed.
+   */
+  collapsedFooter?: React.ReactNode | false;
   /** Density register. Defaults to `default`. */
   density?: HudDensity;
   /**
@@ -162,6 +169,12 @@ function collectAncestors(
     }
   }
   return null;
+}
+
+/** `false` means "nothing while collapsed"; `undefined`/`null` fall back to the expanded slot. */
+function compactSlot(compact: React.ReactNode | false | undefined, expanded: React.ReactNode) {
+  if (compact === false) return null;
+  return compact ?? expanded;
 }
 
 export function HudSideNav(props: HudSideNavProps) {
@@ -312,8 +325,8 @@ function HudSideNavView({
     )
   ) : children;
   const keepBothPresentations = dataDriven && collapsible === 'icon';
-  const visibleHeader = iconCollapsed ? (collapsedHeader ?? header) : header;
-  const visibleFooter = iconCollapsed ? (collapsedFooter ?? footer) : footer;
+  const visibleHeader = iconCollapsed ? compactSlot(collapsedHeader, header) : header;
+  const visibleFooter = iconCollapsed ? compactSlot(collapsedFooter, footer) : footer;
 
   useEffect(() => {
     const nav = navRef.current;

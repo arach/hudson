@@ -85,7 +85,7 @@ bun dev           # Hudson workspace on :3500
 
 ## State
 
-Hudson is **built in the open** and now **published to npm** — both `hudsonkit` and the optional `@hudsonkit/ai` ship real releases. Bump each package's `version` and `CHANGELOG.md` when you're ready to cut a release, merge to `main`, wait for that exact commit's push CI to pass, then run the **Publish npm packages** GitHub workflow from `main` with the full commit SHA. Stable releases use the `latest` dist-tag; prereleases require an explicit non-`latest` tag. This monorepo stays the source of truth — the packages are built and versioned from here.
+Hudson is **built in the open** and now **published to npm** — both `hudsonkit` and the optional `@hudsonkit/ai` ship real releases. Bump each package's `version` and `CHANGELOG.md` when you're ready to cut a release, merge to `main`, run the **CI** workflow on `main` from the Actions tab and wait for it to pass on that exact commit, then run the **Publish npm packages** GitHub workflow from `main` with the full commit SHA. Stable releases use the `latest` dist-tag; prereleases require an explicit non-`latest` tag. This monorepo stays the source of truth — the packages are built and versioned from here.
 
 It's still **0.x**, so the surface moves: the code is legible and the commits are explicit, but APIs can change between releases — pin a version and skim the changelog before bumping. The [Premotion case study](./docs/case-study-premotion.md) documents the real friction of consuming the SDK from outside its monorepo (Tailwind scanning, symlink shape, barrel exports, `'use client'`) — some of it since fixed, some still on the follow-up list.
 

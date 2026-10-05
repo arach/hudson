@@ -1,0 +1,224 @@
+# Layers web view — read-only
+
+## Embed
+
+Dist: `/Users/arach/dev/hudson-worktrees/lattices-editor-slice-1/apps/lattices-editor/dist/`.
+Bundle all six files, including JetBrains Mono 400/600 and its license. No CDN or runtime HTTP requests.
+Production excludes the synthetic host and developer controls.
+
+The native host opts into page mode with `capabilities.result.payload.chrome: "host"`.
+That removes the web title/header, status bar and arrangement/panel-picker toolbar.
+Panel headers remain, with window/selection counts, Clear, filename and selected lines.
+Without the flag, standalone header/status/layout controls remain available.
+
+See [the wire extension](../../docs/proposals/editor-read-bridge-v1.md#layers-page--native-chrome-extension-v7)
+for `ui.command` and serialized `ui.state`. The UI operations use the discovered
+subject ID and null revision. `ui.state.result` has an empty payload and correlated
+request ID. Initial/restored layout and all changes are reported only in host mode.
+
+## Overview / Workspace (v8)
+
+Overview is the first-open default. The last view is persisted per subject under
+`lattices.editor.view.v1:<subjectId>`. Native sends
+`ui.command {command:"view",value:"overview"|"workspace"}`; every ui.state now
+includes `view`. Standalone adds an Overview/Workspace segmented control.
+Workspace stays mounted while Overview is visible, preserving CodeViewer,
+selection, panel state and the v3 layout preference.
+
+Overview retains the 212px index and pinned disabled composer. A windows table
+shows native matched-rule text; unmatched entries appear as waiting rules.
+Optional display maps use global point frames from the host. Preview layout is
+now a read-only Overview subview with pure native proposed frames and a moves
+list, not a command that moves windows. Only live current/proposed pairs receive
+Moves/Stays labels. Missing geometry omits drawings; missing eligible preview
+shows an unavailable notice. Narrow widths hide the maps and rule column.
+Unassigned positions are white; empty layers use neutral chips and disabled
+Preview. All uses an outline square, Unassigned a grey dot. Source links still
+open Workspace Source and preserve duplicate ranges.
+
+Run the Overview fixture with `?mock=1&host=1&overviewfixture=1`.
+Evidence: overview-1280.png, overview-560.png, overview-to-workspace-1280.png,
+overview-to-workspace-560.png. Tests cover default/restored views, native view
+commands/state, data-derived facts, narrow picker, panel shortcuts and stable
+CodeViewer across view switches. Remote v8 canvas remained inaccessible; this
+was compared with the explicit specification and local Talkie source, not
+claimed to pixel-match unseen boards. Independent review found no must-fix.
+
+## Appearance and behavior
+
+- The .lv v8 palette in overview.css overrides both views: neutral surfaces, green actions and amber warnings.
+- SF Pro Text UI at 13px; JetBrains Mono 400/600 for data and labels. Overview layer names use SF Pro Display/system UI at 28px, weight 600. 36px panel headers,
+  34px window rows, 18px app tiles, count pills, selected checks and header dot.
+- Stable Hudson components: grouped list, list items, badges, composer, CodeViewer,
+  peer panel mounts and optional standalone chrome.
+- Read-only context chips mirror Preview; removing chips deselects exact rows.
+  Composer input/send stay disabled. Prompt cards are noninteractive examples.
+- Both selection directions reveal their counterpart. Duplicate Source ranges are
+  amber; stale configuration keeps the last good view under an amber banner.
+  An initial unreadable workspace offers Retry and recovers on config.changed.
+- First open is Overview. Workspace retains Chat plus wider Preview (38:62); Expanded remains filled 2×2.
+  Panels open on demand. The v3 layout namespace preserves chosen layouts.
+- At ≤640px: Preview ≥62vh, context strip, Source, then other enabled panels.
+  CSS fallback does not rewrite the saved wide layout or ui.state ordering.
+
+## Checks (2026-10-02)
+
+`bun run build:lattices-editor` passed. Editor and kit typechecks passed.
+Scoped lint passed (only the existing missing-pages advisory). Unit tests:
+**43 passed, 0 failed, 181 assertions**. Browser checks passed at 1280×820 and
+640×820 in standalone and host modes, including commands/state, chrome gating,
+header metadata, stable Source through layout and recovery, and narrow ordering.
+The full HudsonKit package build also passed.
+
+`bun run test:lattices-editor:browser` rebuilds the isolated development bundle
+and refreshes evidence. It uses installed Chrome or EDITOR_BROWSER_EXECUTABLE.
+For manual fixture use: `dist-dev/index.html?mock=1&host=1`; add `&unreadable=1`
+for the initial read-error state. Native application was not launched or tested.
+
+## Evidence and limits
+
+[design-evidence](./design-evidence/) contains refreshed standalone captures and:
+- host-main-1280.png
+- host-context-source-1280.png
+- host-expanded-1280.png
+- host-narrow-640.png
+- host-states-ambiguous-1280.png
+- host-states-stale-1280.png
+- host-states-unreadable-1280.png
+- host-boards-contact-sheet.png (side-by-side inspection before commits)
+
+The remote v7 canvas was inaccessible. Implementation follows the explicit
+operator requirements and checked native HudThemeBridge.swift mapping; the
+contact sheet compares our board equivalents, not unseen reference pixels.
+Independent bounded review found no material must-fix issues.
+
+Workspace group markers use the running accent (Unassigned neutral). Overview rule text is shown only for the native matchedRule index; ambiguous duplicates do not get a guessed winning rule.
+Search remains native-owned: no search/filter bridge command was specified.
+This bundle does not create the native app page or chrome; native integration is
+separate. No push, merge or PR.
+
+## Short-height checks
+
+Overview keeps the composer visible at 1280×650, 1280×820 and 560×650; only the reading content scrolls. Workspace keeps its full input visible in a 290px Chat panel while context and Try content scroll independently. Browser regression checks and refreshed screenshots cover both. Build, typecheck, lint and all 43 unit tests pass.
+
+## Shared layer selection
+
+Native capabilities seeds the ordered selectedLayerIds. All windows is []; Cmd/Ctrl-click toggles index rows; native commands update the index without switching views or changing row/source selection. Every ui.state includes full layout and selectedLayerIds. Standalone selection persists locally. Counts come directly from projection groups. Evidence: desk-all-1280.png, desk-layer-1280.png, desk-multi-1280.png. Optional read-only arrangement geometry is now enabled when the host supplies it.
+
+## Arrangement evidence and comparison limit
+
+Use `?mock&host&pass2` for the synthetic three-display fixture.
+Screenshots: pass2-overview-1280.png, pass2-empty-1280.png,
+pass2-unassigned-1280.png, pass2-preview-1280.png, pass2-overview-560.png.
+The requested Main/EmptyLayer/Unassigned/PreviewLayout/Register canvas exports
+were unavailable: web access failed and the coordinator exported only DeskAll
+before stopping desktop interaction. No pixel-match claim is made. The written
+brief and current register were checked; bounded review found no must-fix
+geometry/provenance or screenshot issues. ChatAnswer was not implemented.
+
+## Polish v10
+
+Built on origin/main 239b3243 in feat/layers-polish. Shared surface light, grain,
+emerald tokens and card depth; bottom-aligned scaled displays with bezel/glass
+and live-only lit windows; rule chips and counts; materialized Waiting rows.
+Now/Would go is read-only and sends no bridge requests. Without targets it
+stays on Now and disables Would go; narrow views hide the toggle with the
+stage. Historical geometry remains labelled in text, not drawn as Now.
+
+Evidence: polish-layer-1280.png, polish-layer-560.png,
+polish-layer-waiting-1280.png, polish-preview-now-1280.png,
+polish-preview-would-go-1280.png. Full browser suite passes, including pinned
+composers and disabled/unavailable preview. Native app was not launched.
+
+PolishLayer/PolishPreview board exports are still unavailable. Coordinator
+requested them from the operator; implementation follows the written spec.
+No pixel-match claim. Bounded reviewer scored both identified fixes resolved.
+
+## SHA-256
+
+```text
+0864fadfbadb48504866f1fb57f7908caa47ea171207543bc5f88caa3ac08d59  editor.css
+43c59c2322f00f1c1433cf47fc375a876f8a7f579ba084081c76d2eff04e7650  editor.js
+6ceb52eedcfc21964230e4e1793d4e9703b7d76393b8a3808229b6c30c19c208  index.html
+403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b  jetbrains-mono-LICENSE.txt
+14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  jetbrains-mono-latin-400-normal.woff2
+400c6bfda18d5d14acad1c15d6dcb9f8e13c015e7286317e0b9a482539bef147  jetbrains-mono-latin-600-normal.woff2
+```
+
+## Should be release (supersedes the separate Preview page)
+
+Built against native `1dd81b99` / EditorLayout.swift. The Layout card defaults to
+Should be. Native frames and lane labels drive the illustration. Live-only Now
+uses the same scale. The local controls never send bridge operations. Unopened
+slots are illustrative reservations, not inferred executable moves. WontMove
+reasons, ambiguous targets and skipped-entry explanations stay visible. Missing
+layout and explicit `none` have distinct Now-only explanations. The pinned chat,
+shared layer selection and stable Workspace/CodeViewer mounts are unchanged.
+
+Verification: production build, typecheck and scoped lint exit 0 (lint retains
+its existing pages-directory advisory). Unit tests: **49 pass, 0 fail, 199
+assertions**. Full browser suite passes desktop/narrow, host chrome, selection,
+stable Source, persistence, short pinned composers, and Should be/All/Now controls.
+
+Local ShouldBe, ShouldBeAll and ShouldBeNow exports were opened in headless
+Chrome and compared. Evidence under `design-evidence/`:
+
+- `should-be-1280.png`, `should-be-all-1280.png`, `should-be-now-1280.png`
+- `should-be-560.png`, `should-be-all-560.png`, `should-be-now-560.png`
+
+Wide evidence uses 1280×1200 to include the retained pinned composer as well as
+the Layout card/table; narrow uses 560×820. Native shell chrome is not part of
+the web evidence. Fixture names/counts are not copied from the illustrative
+boards. All-entry statuses intentionally say reservation rather than Moves:
+this follows the frozen native contract, not the board's illustrative pills.
+
+Dist: `/Users/arach/dev/hudson-worktrees/lattices-editor-slice-1/apps/lattices-editor/dist/`
+
+```text
+aa41f026479c1a91a8c9ffc8dad230cf019105e0a8374b40779a61eaf862eb4d  editor.css
+b4aa079cf5c00d1dae4fb507b07481c9861405ffbbe0568b4a49d770d92f5723  editor.js
+6ceb52eedcfc21964230e4e1793d4e9703b7d76393b8a3808229b6c30c19c208  index.html
+403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b  jetbrains-mono-LICENSE.txt
+14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  jetbrains-mono-latin-400-normal.woff2
+400c6bfda18d5d14acad1c15d6dcb9f8e13c015e7286317e0b9a482539bef147  jetbrains-mono-latin-600-normal.woff2
+```
+
+## Act release — frozen v1
+
+The layer Overview now supports explicit, confirmed Gather/Open and per-layer
+chat against `docs/proposals/editor-act-wire-v1.md`. Open is launch-only. Buttons
+request a plan; only the confirmation invokes the operation. Escape, outside
+click, Cancel and context changes abandon confirmation. Plans are never retried
+automatically. Assistant replies and suggestions are inert until clicked.
+
+Receipts are native-authored, deduplicated by actionId, and followed by a read-only
+layout/history refresh. Undo requires advertised `action.undo` and the native
+newestUndoableActionId. Cmd-Z works on the page, including Workspace, but not in
+text editors. Partial undo reasons and “Opened apps stay open” are preserved.
+Native shortcuts appear only when returned in a plan; no shortcut is guessed.
+The composer uses the existing kit controller and confirmation uses HudPopover.
+
+Verification: build, typecheck and scoped lint pass (the existing pages-directory
+lint advisory remains). **62 tests pass, 0 fail, 247 assertions.** Browser coverage
+includes all earlier suites plus explicit planning/confirmation, Escape/outside/
+Cancel, no effects on load/select/view/assistant reply, native receipt/layout
+refresh, Undo/history, composer undo isolation and page Cmd-Z in Workspace.
+All effects in these tests are synthetic mock state. No native Gather/Open/Undo
+was executed. Production excludes mock fixtures.
+
+Compared against local ActLayer, ActConfirm and ActDone HTML exports. Captures:
+`design-evidence/act-layer-1280.png`, `act-confirm-1280.png`, `act-done-1280.png`,
+`act-undo-1280.png`, and `act-layer-560.png`. Wide captures are 1280×1340 with the
+retained pinned conversation; the extra narrow capture is 560×820. Native chrome
+and illustrative board names/counts are not copied into the web mock.
+
+Dist: `/Users/arach/dev/hudson-worktrees/lattices-editor-slice-1/apps/lattices-editor/dist/`
+
+```text
+03030223e03fcbf78dd7ff78ad996e794255a71afdddd20b5a58f6a2c765cd10  editor.css
+95d3c5363ea4196f0037cd6abc0f466773fe64337bffc2f9bfd328c8ff788707  editor.js
+6ceb52eedcfc21964230e4e1793d4e9703b7d76393b8a3808229b6c30c19c208  index.html
+403581b69dac5cff4079205e01c6b467e56af449ecbd7247693ddb1baafa005b  jetbrains-mono-LICENSE.txt
+14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb  jetbrains-mono-latin-400-normal.woff2
+400c6bfda18d5d14acad1c15d6dcb9f8e13c015e7286317e0b9a482539bef147  jetbrains-mono-latin-600-normal.woff2
+```

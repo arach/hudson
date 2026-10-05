@@ -3,6 +3,10 @@ import { loadToolset } from '../app/api/ai/toolsets';
 const DEFAULT_WORKERS_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct';
 const APP_HOST = 'app.hudsonkit.com';
 const MARKETING_HOSTS = new Set(['hudsonkit.com', 'www.hudsonkit.com']);
+// Product SPAs vendored into site/out/<name>/ and served at /<name>.
+// Directory + file paths resolve via ASSETS; anything else under the root
+// is a client-side route and falls back to the product's index.html.
+const PRODUCT_ROOTS = ['arc'];
 
 interface Env {
   ASSETS: {
@@ -188,6 +192,31 @@ function serveMarketingRoot(request: Request, env: Env) {
   return env.ASSETS.fetch(new Request(url, request));
 }
 
+async function serveProductRoute(request: Request, env: Env) {
+  const url = new URL(request.url);
+  const host = url.hostname.toLowerCase();
+  if (!MARKETING_HOSTS.has(host) || request.method !== 'GET') {
+    return null;
+  }
+
+  const product = PRODUCT_ROOTS.find(
+    name => url.pathname === `/${name}` || url.pathname.startsWith(`/${name}/`),
+  );
+  if (!product) {
+    return null;
+  }
+
+  const response = await env.ASSETS.fetch(request);
+  if (response.status !== 404) {
+    return response;
+  }
+
+  // A client-side route inside the product SPA — hand it the shell so
+  // the router can resolve the path itself.
+  url.pathname = `/${product}/index.html`;
+  return env.ASSETS.fetch(new Request(url, request));
+}
+
 function writeAssistantResponse(
   write: (chunk: UIMessageChunk) => void,
   text: string,
@@ -273,6 +302,9 @@ export default {
 
     const marketingRootResponse = serveMarketingRoot(request, env);
     if (marketingRootResponse) return marketingRootResponse;
+
+    const productResponse = await serveProductRoute(request, env);
+    if (productResponse) return productResponse;
 
     return env.ASSETS.fetch(request);
   },

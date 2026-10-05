@@ -68,15 +68,47 @@ export interface HudRailResizeHandleProps {
   onResizingChange?: (resizing: boolean) => void;
   controls?: string;
   label?: string;
+  /**
+   * When the hairline shows. `always` (default) keeps a quiet rule at rest;
+   * `hover` hides it until hover or keyboard focus, for layouts where the
+   * neighbouring surface already draws the edge; `never` leaves only the hit
+   * area. The line is `[data-hud-rail-resize-line]` if a theme needs to restyle it.
+   */
+  lineVisibility?: HudRailResizeLineVisibility;
+  /**
+   * Positioning is the caller's: when `className` carries a position utility
+   * (`absolute`, `fixed`, `sticky`, `static`, `relative`) or `style.position`
+   * is set, the handle adds none of its own. Otherwise it is `relative`.
+   */
   className?: string;
   style?: React.CSSProperties;
 }
+
+export type HudRailResizeLineVisibility = 'always' | 'hover' | 'never';
+
+// Unprefixed only: `md:absolute` still leaves the base breakpoint to the handle.
+const POSITION_CLASS = /(?:^|\s)!?(?:absolute|fixed|sticky|static|relative)!?(?=\s|$)/;
+
+/** True when the caller already positions the handle, so it must not add `relative`. */
+export function hasCallerPosition(className?: string, style?: React.CSSProperties): boolean {
+  return Boolean(style?.position) || (className ? POSITION_CLASS.test(className) : false);
+}
+
+const LINE_CLASS: Record<HudRailResizeLineVisibility, string> = {
+  always:
+    'bg-border/70 group-hover/resize:bg-accent/55 group-focus-visible/resize:bg-accent/55',
+  hover:
+    'bg-transparent group-hover/resize:bg-accent/55 group-focus-visible/resize:bg-accent/55',
+  never: 'hidden',
+};
 
 /**
  * Shared primary/context rail resize handle. Pointer drags resize live, drag
  * through the inner threshold collapses without losing the remembered expanded
  * width, and dragging out from compact revives the rail. Double-click resets;
- * Arrow/Home/End and Enter/Space provide the keyboard equivalent.
+ * Arrow/Home/End and Enter/Space provide the keyboard equivalent. A click
+ * that doesn't drag focuses the handle, so Enter/Space work straight after it
+ * (a drag leaves focus where it was).
  */
 export function HudRailResizeHandle({
   side,
@@ -91,6 +123,7 @@ export function HudRailResizeHandle({
   onResizingChange,
   controls,
   label = 'Resize navigation',
+  lineVisibility = 'always',
   className,
   style,
 }: HudRailResizeHandleProps) {
@@ -177,6 +210,9 @@ export function HudRailResizeHandle({
         settled = true;
         if (!moved) {
           cleanup();
+          // Pointer-down prevents default (no text selection mid-drag), which also
+          // stops the browser focusing the handle; a plain click focuses it here.
+          captureTarget.focus({ preventScroll: true });
           return;
         }
         const commit = resolveHudRailResizeCommit({
@@ -310,18 +346,27 @@ export function HudRailResizeHandle({
       tabIndex={0}
       data-hud-rail-resize-handle=""
       data-state={collapsed ? 'collapsed' : 'expanded'}
+      data-line-visibility={lineVisibility}
       onPointerDown={beginResize}
       onDoubleClick={resetWidth}
       onKeyDown={handleKeyboardResize}
       className={cx(
-        'group/resize relative touch-none cursor-ew-resize outline-none',
+        'group/resize touch-none cursor-ew-resize outline-none',
+        !hasCallerPosition(className, style) && 'relative',
         "before:absolute before:inset-y-0 before:-left-2 before:-right-2 before:content-['']",
         'focus-visible:ring-1 focus-visible:ring-ring/60 focus-visible:ring-inset',
         className,
       )}
       style={style}
     >
-      <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-border/70 transition-colors group-hover/resize:bg-accent/55 group-focus-visible/resize:bg-accent/55" />
+      <span
+        data-hud-rail-resize-line=""
+        aria-hidden="true"
+        className={cx(
+          'pointer-events-none absolute inset-y-0 left-1/2 w-px -translate-x-1/2 transition-colors',
+          LINE_CLASS[lineVisibility],
+        )}
+      />
     </div>
   );
 }

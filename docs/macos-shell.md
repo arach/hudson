@@ -27,6 +27,54 @@ HudAppShell {
 }
 ```
 
+### Rounded stage and aligned headers
+
+The Lattices shell contributes an opt-in `.roundedCard(radius:)` stage: all four
+corners share a radius and a continuous 0.5pt theme hairline. `.flush` and the
+existing top-leading-only `.card(radius:)` keep their current appearance.
+`stageInsets` leaves the host background visible outside the stage. Insets apply
+to the same region as the stage surface: with `.besideLeading`, this includes
+drawers, content, inspector, and status bar; `.betweenSidebars` excludes both
+sidebars; `.fullWidth` frames only the content/inspector row.
+
+For a sidebar that extends beneath the titlebar, read the safe area before
+ignoring it. The host retains ownership of the backdrop and header controls:
+
+```swift
+GeometryReader { proxy in
+    let offset = HudSidebarLayout.headerOffset(
+        topInset: proxy.safeAreaInsets.top, pageHeaderHeight: 46
+    )
+    HudAppShell(
+        statusBarSpan: .besideLeading,
+        stage: .roundedCard(radius: 10),
+        stageInsets: EdgeInsets(
+            top: proxy.safeAreaInsets.top, leading: 0,
+            bottom: HudSpacing.sm, trailing: HudSpacing.sm
+        )
+    ) {
+        // Apply offset to each complete railHeader / labelHeader control,
+        // including its Button, so hit areas and focus follow the visuals.
+        NavigationSidebar(headerOffset: offset)
+    } trailing: {
+        EmptyView()
+    } topDrawer: {
+        PageHeader().frame(height: 46)
+    } bottomDrawer: {
+        EmptyView()
+    } content: {
+        PageContent()
+    } statusBar: {
+        StatusBar() // The shell supplies its top divider.
+    }
+    .ignoresSafeArea(.container, edges: .top)
+    .background(WindowBackdrop())
+}
+```
+
+`headerOffset` changes only the header slots. Navigation rows and the fixed rail
+width remain stable during collapse and expansion.
+
 ## HudNavigationSidebar / HudNavigationRail
 
 Two leading-slot implementations, both first-class (HUD-001).

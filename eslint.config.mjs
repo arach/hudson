@@ -18,6 +18,7 @@ const eslintConfig = defineConfig([
     "**/next-env.d.ts",
     // Build artifacts and generated bundles — never lint these.
     "**/dist/**",
+    "**/dist-dev/**",
     "**/.build/**",
     "**/*.app/**",
     "**/*.bundle/**",

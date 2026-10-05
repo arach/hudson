@@ -110,12 +110,6 @@ dependencies.append(.package(url: "https://github.com/FluidInference/FluidAudio.
 products.append(hudsonLibrary(name: "HudsonTranscriptionCloud", targets: ["HudsonTranscriptionCloud"]))
 products.append(hudsonLibrary(name: "HudsonTranscriptionFluidAudio", targets: ["HudsonTranscriptionFluidAudio"]))
 
-// A public-contract local reference; selecting it never downloads a model.
-dependencies.append(.package(url: "https://github.com/argmaxinc/WhisperKit.git", from: "0.18.0"))
-// Already a WhisperKit dependency; declare its local tokenizer API directly.
-dependencies.append(.package(url: "https://github.com/huggingface/swift-transformers.git", .upToNextMinor(from: "1.1.6")))
-products.append(hudsonLibrary(name: "HudsonTranscriptionWhisperKit", targets: ["HudsonTranscriptionWhisperKit"]))
-
 var demoDependencies: [Target.Dependency] = ["HudsonUI", "HudsonShell", "HudsonVoice"]
 var demoSwiftSettings: [SwiftSetting] = []
 
@@ -189,9 +183,6 @@ targets.append(.testTarget(name: "HudsonTranscriptionFluidAudioTests", dependenc
 products.append(hudsonLibrary(name: "HudsonTranscriptionElevenLabs", targets: ["HudsonTranscriptionElevenLabs"]))
 targets.append(.target(name: "HudsonTranscriptionElevenLabs", dependencies: ["HudsonTranscription", "HudsonTranscriptionCloud"], path: src + "HudsonTranscriptionElevenLabs"))
 targets.append(.testTarget(name: "HudsonTranscriptionElevenLabsTests", dependencies: ["HudsonTranscriptionElevenLabs"], path: tst + "HudsonTranscriptionElevenLabsTests"))
-
-targets.append(.target(name: "HudsonTranscriptionWhisperKit", dependencies: ["HudsonTranscription", .product(name: "WhisperKit", package: "WhisperKit"), .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers")], path: src + "HudsonTranscriptionWhisperKit"))
-targets.append(.testTarget(name: "HudsonTranscriptionWhisperKitTests", dependencies: ["HudsonTranscriptionWhisperKit"], path: tst + "HudsonTranscriptionWhisperKitTests"))
 
 // Conversational voice: reusable two-way spoken assistant sessions. This stack
 // is distinct from the transcription targets above; conversational output must

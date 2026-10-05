@@ -190,6 +190,21 @@
     "./styles/tokens.css": {
       "types": "./dist/styles-tokens.d.ts",
       "default": "./dist/tokens.css"
+    },
+    "./editor-workspace": {
+      "types": "./dist/editor-workspace.d.ts",
+      "import": "./dist/editor-workspace.js",
+      "default": "./dist/editor-workspace.js"
+    },
+    "./editor-panels": {
+      "types": "./dist/editor-panels.d.ts",
+      "import": "./dist/editor-panels.js",
+      "default": "./dist/editor-panels.js"
+    },
+    "./code-surface": {
+      "types": "./dist/code-surface.d.ts",
+      "import": "./dist/code-surface.js",
+      "default": "./dist/code-surface.js"
     }
   },
   "files": [

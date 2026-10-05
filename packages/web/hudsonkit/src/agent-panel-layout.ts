@@ -6,7 +6,11 @@ export interface AgentWorkspacePanel {
   id: string;
   label: string;
   content: Node;
+  /** Optional app-owned metadata beside the panel handle. */
+  headerContent?: Node;
   disabled?: boolean;
+  /** Hide the header menu; defaults to visible. */
+  showActions?: boolean;
 }
 
 export type AgentWorkspacePanelArrangement = 'single' | 'columns' | 'rows' | 'grid';
@@ -449,13 +453,18 @@ export function createAgentPanelLayout(
     }
     visibilityItems.replaceChildren();
 
+    let frameIndex = 0;
     for (const id of orderedIds()) {
       const panel = panelById(id)!;
       const frame = frames.get(id) ?? createFrame(id);
       const handle = frame.querySelector<HTMLButtonElement>('.hk-agent-workspace__panel-handle')!;
       const content = frame.querySelector<HTMLElement>('.hk-agent-workspace__peer-panel-content')!;
       const actionButtons = frame.querySelectorAll<HTMLButtonElement>('.hk-agent-workspace__panel-action');
+      frame.querySelector<HTMLElement>('.hk-agent-workspace__panel-actions')!.hidden = panel.showActions === false;
       handle.textContent = panel.label;
+      const header = frame.querySelector<HTMLElement>('.hk-agent-workspace__peer-panel-header')!;
+      const actions = frame.querySelector<HTMLElement>('.hk-agent-workspace__panel-actions')!;
+      if (panel.headerContent && panel.headerContent.parentNode !== header) header.insertBefore(panel.headerContent, actions);
       handle.disabled = Boolean(panel.disabled);
       frame.setAttribute('aria-label', panel.label);
       frame.dataset.focused = String(state.focusedPanelId === id);
@@ -464,7 +473,10 @@ export function createAgentPanelLayout(
       }
       actionButtons.forEach((button) => { button.disabled = Boolean(panel.disabled); });
       frame.hidden = !shown.includes(id);
-      body.append(frame);
+      // Do not detach stable mounts just to render focus/size/visibility changes.
+      // Reparenting a code surface can discard its scroll position.
+      if (body.children[frameIndex] !== frame) body.insertBefore(frame, body.children[frameIndex] ?? null);
+      frameIndex += 1;
 
       const visibility = element('button', 'hk-agent-workspace__panel-visibility-item');
       const isVisible = !state.hiddenPanelIds.includes(id);

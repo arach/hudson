@@ -7,6 +7,8 @@
 //   * '@hudsonkit/ai/pi-ai'     — createPiAiBackend, credential resolvers,
 //                                 listAvailableModels
 //   * '@hudsonkit/ai/vercel-ai' — createVercelAiBackend
+//   * '@hudsonkit/ai/scout'     — createScoutBackend, listHarnessModels
+//                                 (local agent harnesses; server-only)
 // ---------------------------------------------------------------------------
 
 // Core types
@@ -60,6 +62,9 @@ export type {
   VercelAiUIFinishEvent,
   VercelAiUIRequest,
 } from './adapters/vercel-ai';
+export type { ScoutConfig, ScoutMeta, ScoutBackendOptions, ScoutBackend } from './adapters/scout';
+export type { ScoutHarness } from './scout/harnesses';
+export type { HarnessModel, ListHarnessModelsOptions, ListHarnessModelsResult } from './scout/models';
 
 // Toolset types + registry (also available via '@hudsonkit/ai/toolsets')
 export type { ToolsetDefinition } from './toolsets/types';

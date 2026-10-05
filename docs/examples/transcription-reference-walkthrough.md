@@ -1,11 +1,10 @@
 # Add a transcription engine through the public contract
 
 Status: source-linked walkthrough, checked September 16, 2026. The remote case
-has a passing public-API fixture, but no real vendor acceptance yet. The local
-case passed actual WhisperKit tiny inference with network access denied on
-September 16, using a generated nonprivate recording.
+has a passing public-API fixture, but no real vendor acceptance yet. The
+WhisperKit local case was removed with its adapter on September 24, 2026.
 
-The two examples are ordinary Swift packages/targets registered by the host.
+Adapters are ordinary Swift packages/targets registered by the host.
 They are not downloaded executable plugins. A vendor client is a remote adapter;
 it does not require the user to run a proxy service. A local adapter can embed
 an SDK independently of FluidAudio. Adding either kind does not change Parakeet
@@ -47,39 +46,6 @@ A second test verifies that unsupported vocabulary hints never submit audio.
 
 This is transport/normalization evidence. The four fixture bytes are not valid
 speech audio and must not be used as a claimed transcription-quality result.
-
-## Local case: WhisperKit
-
-Read the implementation in
-[`HudWhisperKitTranscriptionAdapter.swift`](../../packages/native/apple/HudsonKit/Sources/HudsonTranscriptionWhisperKit/HudWhisperKitTranscriptionAdapter.swift)
-and the executable cases in
-[`WhisperKitAdapterTests.swift`](../../packages/native/apple/HudsonKit/Tests/HudsonTranscriptionWhisperKitTests/WhisperKitAdapterTests.swift).
-
-The provider ID is `whisperkit-reference`. The descriptor declares local origin,
-a custom maintainer, a required local-model location, and adapter-metadata model
-discovery. Ask `models(configuration:)` for IDs instead of deriving an ID from a
-folder name. The fixture uses `openai_whisper-tiny`.
-
-Readiness inspects the supplied model folder. Explicit `prepare(configuration:)`
-loads existing assets through `HudWhisperKitRuntime`; the native runtime disables
-model download. Readiness requires parseable tokenizer.json and
-tokenizer_config.json and fingerprints both files. Native preparation validates
-the BPE vocabulary and merge rules and constructs the tokenizer from those same
-local bytes. It supplies that tokenizer directly to WhisperKit, bypassing the
-SDK loader that can fall back to downloading. File submission does not install models. Native inference is
-serialized, and each batch operation owns its cancellation and deadline state.
-The public runtime seam permits fixture inference without shipping a fake model
-or changing the shared contract.
-
-This reference advertises batch transcription only. It rejects caller-fed live
-input, speaker labels, rewriting, and unsupported hint combinations before
-inference. Native segment and word annotations are normalized only when present.
-Missing word annotations remain absent. Model deletion and changed configuration
-are tested rather than treating an old preparation as permanently valid.
-
-The fixture suite covers cancellation, expiry while queued behind inference,
-missing assets, unknown model IDs, stale configurations, source digests, and
-normalization. It does not establish actual-model accuracy, memory use, or speed.
 
 ## What a new adapter implements
 
@@ -129,13 +95,7 @@ terminal result. A remote connection closing does not prove remote cancellation.
 ## Verification
 
 The September 16 current-source contract/cloud/ElevenLabs harness passed 38 tests
-across six suites, including both remote reference cases. The separate
-WhisperKit Swift 6 harness passed 16 fixture tests, with its opt-in native test
-skipped in the default run. All 17 tests then passed together under a process
-sandbox denying all network access, including invalid local tokenizer rejection: actual model preparation and
-inference, expected words, local provider identity, and nonempty word timings.
-This verifies the downloaded tiny model and the tested missing/incomplete
-tokenizer failures; it is not a quality evaluation of all model variants. See the
+across six suites, including both remote reference cases. See the
 [acceptance audit](../reports/transcription-acceptance-audit.md) for commands,
 evidence limits, and pending live acceptance. This walkthrough supplies executable source references for the developer and
 testing guides.

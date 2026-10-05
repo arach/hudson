@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useLayoutEffect } from 'react';
+import { createReadOnlyCodeSurface } from '../../editor/code-surface';
+import type { SourceRange } from '../../editor/subject-store';
 import { Check, Copy, FileCode2 } from '../../icons';
 
 // ---------------------------------------------------------------------------
@@ -11,6 +13,10 @@ export type CodeLanguage = 'typescript' | 'javascript' | 'json' | 'css' | 'html'
 
 export interface CodeViewerProps {
   code: string;
+  /** Optional interactive, read-only UTF-16 selection surface. */
+  onSelectRanges?: (ranges: SourceRange[]) => void;
+  ranges?: readonly SourceRange[];
+  revealRanges?: boolean;
   language?: CodeLanguage;
   filename?: string;
   startLine?: number;
@@ -278,7 +284,26 @@ const TOKEN_COLORS: Record<TokenType, string> = {
 // Component
 // ---------------------------------------------------------------------------
 
-export const CodeViewer: React.FC<CodeViewerProps> = ({
+export const CodeViewer: React.FC<CodeViewerProps> = (props) => {
+  if (props.onSelectRanges) return <SelectableCodeViewer {...props} />;
+  return <StaticCodeViewer {...props} />;
+};
+
+function SelectableCodeViewer({ code, onSelectRanges, ranges = [], revealRanges = true, className }: CodeViewerProps) {
+  const host = useRef<HTMLDivElement>(null);
+  const surface = useRef<ReturnType<typeof createReadOnlyCodeSurface> | null>(null);
+  const select = useRef(onSelectRanges);
+  useLayoutEffect(() => { select.current = onSelectRanges; }, [onSelectRanges]);
+  useLayoutEffect(() => {
+    surface.current = createReadOnlyCodeSurface(host.current!, { text: "", onSelect: ranges => select.current?.(ranges) });
+    return () => { surface.current?.destroy(); surface.current = null; };
+  }, []);
+  useLayoutEffect(() => { surface.current?.setText(code); }, [code]);
+  useLayoutEffect(() => { surface.current?.highlight(ranges, { scroll: revealRanges }); }, [ranges, revealRanges]);
+  return <div data-code-viewer className={className} ref={host} />;
+}
+
+const StaticCodeViewer: React.FC<CodeViewerProps> = ({
   code,
   language = 'typescript',
   filename,
