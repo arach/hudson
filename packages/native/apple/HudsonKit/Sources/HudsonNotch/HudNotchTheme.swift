@@ -28,6 +28,9 @@ public struct HudNotchTheme {
     /// Drawn before the eyebrow on the open card and on the left wing, in
     /// place of the status dot.
     public var mark: AnyView?
+    /// The square the mark is drawn in. 11 suits a glyph; a character
+    /// mark wants more room.
+    public var markSize: CGFloat
 
     public init(
         body: Color = .black,
@@ -41,7 +44,8 @@ public struct HudNotchTheme {
         detailFont: Font = HudFont.ui(HudTextSize.xs),
         action: Color? = nil,
         actionInk: Color = .black,
-        mark: AnyView? = nil
+        mark: AnyView? = nil,
+        markSize: CGFloat = 11
     ) {
         self.body = body
         self.ink = ink
@@ -55,6 +59,7 @@ public struct HudNotchTheme {
         self.action = action
         self.actionInk = actionInk
         self.mark = mark
+        self.markSize = markSize
     }
 
     public static let hudson = HudNotchTheme()

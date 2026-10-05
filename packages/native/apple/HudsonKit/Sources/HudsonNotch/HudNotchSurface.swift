@@ -416,7 +416,7 @@ public struct HudNotchSurface: View {
         if let mark = theme.mark {
             mark
                 .foregroundStyle(color)
-                .frame(width: 11, height: 11)
+                .frame(width: theme.markSize, height: theme.markSize)
                 .accessibilityHidden(true)
         } else {
             HudNotchPulseDot(color: color, isPulsing: isPulsing, size: 6)
