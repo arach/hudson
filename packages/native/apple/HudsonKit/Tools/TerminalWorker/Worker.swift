@@ -67,6 +67,8 @@ private final class Terminal {
               !specification.executable.contains("\0"), !specification.workingDirectory.contains("\0"),
               specification.arguments.allSatisfy({ !$0.contains("\0") }),
               specification.environment.allSatisfy({ !$0.key.contains("=") && !$0.key.contains("\0") && !$0.value.contains("\0") }),
+              specification.fontStyle.map(HudTerminalProcessSpecification.isValidFontStyle) ?? true,
+              specification.fontFilePaths.map(HudTerminalSystemFonts.register) ?? true,
               let device = MTLCreateSystemDefaultDevice(), let pool = ExportPool(width: 640, height: 400, device: device) else {
             throw NSError(domain: "Terminal specification or pixel budget", code: 1)
         }
@@ -75,6 +77,9 @@ private final class Terminal {
         guard let config else { throw NSError(domain: "Terminal configuration", code: 1) }
         ghostty_config_set_font_size(config, Float(specification.fontSize))
         _ = specification.fontFamily.withCString { ghostty_config_set_font_family(config, $0, UInt(specification.fontFamily.utf8.count)) }
+        if let style = specification.fontStyle, !Self.loadFontStyle(style, into: config) {
+            stop(); throw NSError(domain: "Terminal font style", code: 1)
+        }
         ghostty_config_finalize(config)
         var runtime = ghostty_runtime_config_s(userdata: Unmanaged.passUnretained(self).toOpaque(), supports_selection_clipboard: false,
             wakeup_cb: { pointer in
@@ -184,6 +189,21 @@ private final class Terminal {
         if next.visible { ghostty_surface_request_frame_export(surface) }
         return nil
     }
+    private static func loadFontStyle(_ style: String, into config: ghostty_config_t) -> Bool {
+        guard HudTerminalProcessSpecification.isValidFontStyle(style) else { return false }
+        let path = (NSTemporaryDirectory() as NSString).appendingPathComponent("hudson-font-style-\(UUID().uuidString).conf")
+        let descriptor = open(path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0o600)
+        guard descriptor >= 0 else { return false }
+        defer { unlink(path) }
+        let bytes = Array("font-style = \(style)\n".utf8)
+        let written = bytes.withUnsafeBytes { write(descriptor, $0.baseAddress, $0.count) }
+        let closeResult = close(descriptor)
+        guard written == bytes.count, closeResult == 0 else { return false }
+        let before = ghostty_config_diagnostics_count(config)
+        path.withCString { ghostty_config_load_file(config, $0) }
+        return ghostty_config_diagnostics_count(config) == before
+    }
+
     func acquire(_ reply: @escaping (IOSurface?, UInt64) -> Void) {
         lock.lock()
         guard !stopped, waiting == nil else { lock.unlock(); reply(nil, 0); return }
