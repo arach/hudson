@@ -1,6 +1,7 @@
 #if os(macOS)
 import Foundation
 import IOSurface
+import CoreText
 
 // Versioned private wire contract shared by Hudson's host and embedded helper.
 // No terminal bytes or screen snapshots travel on the presentation channel.
@@ -34,12 +35,60 @@ public struct HudTerminalProcessSpecification: Codable, Equatable, Sendable {
     public var workingDirectory: String
     public var fontFamily: String
     public var fontSize: Double
+    /// Optional style for normal cells. Bold and italic retain their own styles.
+    public var fontStyle: String?
+    /// Installed system font files to register only in the worker process.
+    public var fontFilePaths: [String]?
     public var version = HudTerminalIPCWire.version
     public init(executable: String = "/bin/zsh", arguments: [String] = ["-l"], environment: [String: String] = [:],
-                workingDirectory: String = NSHomeDirectory(), fontFamily: String = "Menlo", fontSize: Double = 14) {
+                workingDirectory: String = NSHomeDirectory(), fontFamily: String = "Menlo", fontSize: Double = 14,
+                fontStyle: String? = nil, fontFilePaths: [String]? = nil) {
         self.executable = executable; self.arguments = arguments; self.environment = environment
         self.workingDirectory = workingDirectory; self.fontFamily = fontFamily; self.fontSize = fontSize
+        self.fontStyle = fontStyle; self.fontFilePaths = fontFilePaths
     }
+
+    public static func isValidFontStyle(_ style: String) -> Bool {
+        let bytes = Array(style.utf8)
+        guard (1...64).contains(bytes.count), bytes.first != 0x20, bytes.last != 0x20 else { return false }
+        return bytes.allSatisfy {
+            (0x30...0x39).contains($0) || (0x41...0x5A).contains($0) || (0x61...0x7A).contains($0) || $0 == 0x20
+        }
+    }
+}
+
+/// Uses fonts already supplied by macOS. Registration never installs or copies
+/// a font and must happen independently in each process that resolves it.
+public enum HudTerminalSystemFonts {
+    private static let terminalFonts = "/System/Applications/Utilities/Terminal.app/Contents/Resources/Fonts/"
+    public static let sfMonoFilePaths: [String] = {
+        ["Regular", "Light", "Medium", "Semibold", "Bold", "Heavy"].flatMap { style in
+            [style, style + "Italic"].map { terminalFonts + "SF-Mono-" + $0 + ".otf" }
+        }.filter { FileManager.default.fileExists(atPath: $0) }
+    }()
+
+    public static func isAllowedFilePath(_ path: String) -> Bool {
+        guard !path.contains("\0"), path.utf8.count <= 4096, path.hasPrefix("/") else { return false }
+        let url = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath()
+        let allowedRoot = url.path.hasPrefix("/System/Library/Fonts/") || url.path.hasPrefix(terminalFonts)
+        return allowedRoot && ["otf", "ttf"].contains(url.pathExtension.lowercased())
+    }
+
+    public static func register(_ paths: [String]) -> Bool {
+        guard paths.count <= 32, paths.allSatisfy(isAllowedFilePath) else { return false }
+        for path in paths {
+            let url = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath()
+            guard let values = try? url.resourceValues(forKeys: [.isRegularFileKey]), values.isRegularFile == true else { return false }
+            var error: Unmanaged<CFError>?
+            if !CTFontManagerRegisterFontsForURL(url as CFURL, .process, &error) {
+                guard let error = error?.takeRetainedValue(),
+                      CFErrorGetCode(error) == CTFontManagerError.alreadyRegistered.rawValue else { return false }
+            }
+        }
+        return true
+    }
+
+    public static let registeredSFMono: Bool = !sfMonoFilePaths.isEmpty && register(sfMonoFilePaths)
 }
 public struct HudTerminalInputEvent: Codable, Sendable {
     public var kind: String
