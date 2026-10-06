@@ -12,6 +12,10 @@ import SwiftUI
 ///
 /// The controller adds no status item, settings window, or brand; the host
 /// app decides those.
+///
+/// Whatever the notch shows, the person puts it away the same way: the ×
+/// that shows on hover, a swipe up over the notch, Escape while it has the
+/// keyboard, or right-click, Dismiss. See `putAway(_:)`.
 @MainActor
 public final class HudNotchController: ObservableObject {
     public struct Copy: Sendable {
@@ -55,6 +59,8 @@ public final class HudNotchController: ObservableObject {
     /// Room the scenes shown so far need. It only grows, so the panel never
     /// shrinks under a shape that is still animating down.
     @Published private var sceneRoom: CGSize = .zero
+    /// How far a swipe up has gone, 0…1. The surface lifts a little with it.
+    @Published public private(set) var swipeProgress: Double = 0
 
     /// Called on the main actor with each answer or dismissal, after it has
     /// been sent to the socket (when serving).
@@ -70,6 +76,8 @@ public final class HudNotchController: ObservableObject {
     private var collapseTask: Task<Void, Never>?
     private var retractTask: Task<Void, Never>?
     private var keyMonitor: Any?
+    private var scrollMonitor: Any?
+    private var swipe = HudNotchSwipe()
     /// The scene last presented, kept so its content can fade out after
     /// `present(nil)`.
     public private(set) var lastScene: HudNotchScene?
@@ -97,6 +105,9 @@ public final class HudNotchController: ObservableObject {
         }
         if let keyMonitor {
             NSEvent.removeMonitor(keyMonitor)
+        }
+        if let scrollMonitor {
+            NSEvent.removeMonitor(scrollMonitor)
         }
     }
 
@@ -202,6 +213,7 @@ public final class HudNotchController: ObservableObject {
             )
             self.panel = panel
             updatePanelFrame(animated: false)
+            installMonitors()
         }
 
         guard let panel else { return }
@@ -226,6 +238,10 @@ public final class HudNotchController: ObservableObject {
     public func hide() {
         guard let panel, panel.isVisible, isVisible else { return }
         isVisible = false
+        // The panel goes out from under the pointer without an exit event.
+        if isHovered { setHovered(false) }
+        swipe.reset()
+        swipeProgress = 0
         collapseTask?.cancel()
         setExpanded(false)
         isPresented = false
@@ -420,7 +436,6 @@ public final class HudNotchController: ObservableObject {
             guard self.scene != nil else { return }
             self.scene = nil
             releaseFocus()
-            updateKeyMonitor()
             if stage.activities.isEmpty { hide() }
             return
         }
@@ -439,8 +454,70 @@ public final class HudNotchController: ObservableObject {
         lastScene = scene
         self.scene = scene
         if !scene.takesKeys { releaseFocus() }
-        updateKeyMonitor()
         show()
+    }
+
+    /// Takes the scene away and tells it how through `onDismiss`. With a
+    /// person's reason it does nothing for a scene that isn't `dismissible`.
+    /// The shape tucks back into the housing unless the stage has something
+    /// on it.
+    public func dismissScene(_ reason: HudNotchDismissal = .host) {
+        guard let scene else { return }
+        if reason.byPerson, !scene.dismissible { return }
+        self.scene = nil
+        releaseFocus()
+        if stage.activities.isEmpty {
+            hide()
+        } else {
+            setExpanded(false)
+        }
+        scene.onDismiss?(reason)
+    }
+
+    // MARK: Putting away
+
+    /// What the person would put away right now: the scene, the open card,
+    /// or the activity on the collapsed wings.
+    public var canPutAway: Bool {
+        if showsScene { return scene?.dismissible ?? false }
+        return activityToPutAway != nil
+    }
+
+    private var activityToPutAway: HudNotchActivity? {
+        guard isPresented else { return nil }
+        return isExpanded ? stage.focused : stage.headline
+    }
+
+    /// The person puts away what the notch is showing. A scene leaves through
+    /// `dismissScene(_:)`. An activity leaves the stage and stays off while
+    /// its sender keeps posting the same state (see `HudNotchStage.putAway`);
+    /// one that was waiting releases its asker with `dismissed`. Returns
+    /// whether anything left.
+    @discardableResult
+    public func putAway(_ reason: HudNotchDismissal) -> Bool {
+        if showsScene {
+            guard scene?.dismissible == true else { return false }
+            dismissScene(reason)
+            return true
+        }
+        guard let activity = activityToPutAway else { return false }
+        putAway(activityID: activity.id)
+        return true
+    }
+
+    /// Puts one activity away for the person: the × on its card.
+    public func putAway(activityID id: String) {
+        guard let removed = stage.putAway(id: id) else { return }
+        isComposing = false
+        if removed.state == .waiting { send(.dismissed(id: id)) }
+        if stage.waiting.isEmpty { releaseFocus() }
+        if stage.activities.isEmpty, scene == nil {
+            hide()
+        } else {
+            // The scene, or what's left on the wings, comes back as the card folds.
+            collapseTask?.cancel()
+            setExpanded(false)
+        }
     }
 
     /// Makes the notch key so the scene hears keys, without activating the
@@ -462,29 +539,69 @@ public final class HudNotchController: ObservableObject {
     /// True while the notch panel is the key window.
     public var hasFocus: Bool { panel?.isKeyWindow ?? false }
 
-    private func updateKeyMonitor() {
-        let wants = scene?.takesKeys ?? false
-        if wants, keyMonitor == nil {
+    /// Keys and scrolls aimed at the notch's own panel. Both monitors pass
+    /// everything else through untouched.
+    private func installMonitors() {
+        if keyMonitor == nil {
             keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
                 // Local monitors run on the main thread.
                 nonisolated(unsafe) let event = event
                 let consumed = MainActor.assumeIsolated { self?.routeKey(event) ?? false }
                 return consumed ? nil : event
             }
-        } else if !wants, let keyMonitor {
-            NSEvent.removeMonitor(keyMonitor)
-            self.keyMonitor = nil
+        }
+        if scrollMonitor == nil {
+            scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+                nonisolated(unsafe) let event = event
+                MainActor.assumeIsolated { self?.routeScroll(event) }
+                return event
+            }
         }
     }
 
-    /// True when the scene consumed the event.
+    /// True when the scene, or Escape, consumed the event. The scene hears
+    /// keys first, so a scene that uses Escape itself keeps it.
     private func routeKey(_ event: NSEvent) -> Bool {
-        guard let panel, event.window === panel, showsScene, let scene else { return false }
-        switch event.type {
-        case .keyDown: return scene.onKeyDown?(event) ?? false
-        case .flagsChanged: return scene.onFlagsChanged?(event) ?? false
-        default: return false
+        guard let panel, event.window === panel else { return false }
+        if showsScene, let scene {
+            let consumed: Bool
+            switch event.type {
+            case .keyDown: consumed = scene.onKeyDown?(event) ?? false
+            case .flagsChanged: consumed = scene.onFlagsChanged?(event) ?? false
+            default: consumed = false
+            }
+            if consumed { return true }
         }
+        let bare = event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty
+        guard event.type == .keyDown, event.keyCode == Self.escapeKeyCode, bare, canPutAway else { return false }
+        putAway(.escape)
+        return true
+    }
+
+    private static let escapeKeyCode: UInt16 = 53
+
+    /// A swipe up over the notch puts away what it shows.
+    private func routeScroll(_ event: NSEvent) {
+        guard let panel, event.window === panel else { return }
+        let phase: HudNotchSwipe.Phase
+        if !event.momentumPhase.isEmpty {
+            phase = .momentum
+        } else if event.phase.contains(.began) || event.phase.contains(.mayBegin) {
+            phase = .began
+        } else if event.phase.contains(.ended) || event.phase.contains(.cancelled) {
+            phase = .ended
+        } else if event.phase.isEmpty {
+            phase = .wheel
+        } else {
+            phase = .changed
+        }
+        guard canPutAway || phase == .ended else { return }
+        // Wheel clicks come in lines; a few of them make a swipe.
+        let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 12
+        let done = swipe.feed(deltaY: delta, inverted: event.isDirectionInvertedFromDevice, phase: phase, at: event.timestamp)
+        let progress = swipe.fired ? 0 : swipe.progress
+        if swipeProgress != progress { swipeProgress = progress }
+        if done { putAway(.swipe) }
     }
 
     // MARK: Screen

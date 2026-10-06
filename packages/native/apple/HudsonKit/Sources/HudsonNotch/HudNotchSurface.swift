@@ -60,7 +60,15 @@ public struct HudNotchSurface: View {
         }
         .silhouetteFrame(width: shape.width, height: shape.height, alignment: .top)
         .opacity(shape.opacity)
+        // A swipe up lifts the shape a little toward the housing as it builds.
+        .offset(y: reduceMotion ? 0 : -CGFloat(controller.swipeProgress) * 6)
+        .animation(.easeOut(duration: 0.12), value: controller.swipeProgress)
         .contentShape(Rectangle())
+        .contextMenu {
+            if controller.canPutAway {
+                Button("Dismiss") { controller.putAway(.menu) }
+            }
+        }
         .onHover { controller.setHovered($0) }
         .padding(.top, shellTopInset)
         .onChange(of: controller.attentionSerial) { _, _ in flash() }
@@ -368,19 +376,19 @@ public struct HudNotchSurface: View {
                     .fixedSize()
                 }
 
-                if !activity.state.isOngoing || activity.state == .waiting {
-                    Button {
-                        controller.dismiss(id: activity.id)
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(theme.dim)
-                            .frame(width: 18, height: 18)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Dismiss")
+                // Every card can be put away; a working one stays off until it moves on.
+                Button {
+                    controller.putAway(activityID: activity.id)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(theme.dim)
+                        .frame(width: 18, height: 18)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .help("Dismiss")
+                .accessibilityLabel("Dismiss")
             }
 
             if activity.state == .working || activity.progress != nil {
@@ -479,7 +487,10 @@ public struct HudNotchSurface: View {
                 scene: scene,
                 notchGap: controller.notchGap,
                 shellHeight: controller.shellHeight,
-                reduceMotion: reduceMotion
+                reduceMotion: reduceMotion,
+                showsClose: controller.isHovered && controller.showsScene && scene.dismissible,
+                closeColor: theme.muted,
+                close: { controller.putAway(.closeButton) }
             )
             .accessibilityLabel(scene.accessibilityLabel.isEmpty ? controller.copy.name : scene.accessibilityLabel)
         }

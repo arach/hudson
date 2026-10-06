@@ -15,6 +15,14 @@ import SwiftUI
 /// Present one with `HudNotchController.present(_:)`. An activity that asks
 /// for attention still opens over the scene, and the scene comes back when
 /// that card folds.
+///
+/// Every scene can be put away by the person, the same way everywhere: a
+/// small × on the trailing wing while the pointer is over the notch, a swipe
+/// up over it, Escape while it has the keyboard, or right-click, Dismiss. The
+/// shape tucks back into the housing and `onDismiss` hears how. Keep the scene
+/// away after that until something new happens: presenting it again on the
+/// next state tick brings it straight back. A scene that must stay (a step the
+/// person has to finish) sets `dismissible` to false.
 public struct HudNotchScene {
     public struct Size: Hashable, Sendable {
         /// The silhouette's full width, wings included.
@@ -50,6 +58,12 @@ public struct HudNotchScene {
     public var onKeyDown: (@MainActor (NSEvent) -> Bool)?
     /// Modifier changes while the notch is key. Return true to consume.
     public var onFlagsChanged: (@MainActor (NSEvent) -> Bool)?
+    /// The person can put it away. True unless the host says otherwise.
+    public var dismissible: Bool
+    /// The scene left the notch through `dismissScene(_:)`: by the person
+    /// (`byPerson`), or by the host. Not called for `present(nil)` or for a
+    /// new scene taking its place.
+    public var onDismiss: (@MainActor (HudNotchDismissal) -> Void)?
 
     public init<Leading: View, Trailing: View, Content: View>(
         id: String,
@@ -60,6 +74,8 @@ public struct HudNotchScene {
         onHover: (@MainActor (Bool) -> Void)? = nil,
         onKeyDown: (@MainActor (NSEvent) -> Bool)? = nil,
         onFlagsChanged: (@MainActor (NSEvent) -> Bool)? = nil,
+        dismissible: Bool = true,
+        onDismiss: (@MainActor (HudNotchDismissal) -> Void)? = nil,
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder trailing: () -> Trailing,
         @ViewBuilder content: () -> Content
@@ -72,6 +88,8 @@ public struct HudNotchScene {
         self.onHover = onHover
         self.onKeyDown = onKeyDown
         self.onFlagsChanged = onFlagsChanged
+        self.dismissible = dismissible
+        self.onDismiss = onDismiss
         self.leading = AnyView(leading())
         self.trailing = AnyView(trailing())
         self.content = AnyView(content())
@@ -192,6 +210,11 @@ struct HudNotchSceneLayout: View {
     var notchGap: CGFloat
     var shellHeight: CGFloat
     var reduceMotion: Bool
+    /// The pointer is over a dismissible scene: the trailing wing trades its
+    /// content for a small ×, always in the same place.
+    var showsClose = false
+    var closeColor: Color = .secondary
+    var close: () -> Void = {}
 
     var body: some View {
         let size = scene.size
@@ -202,9 +225,18 @@ struct HudNotchSceneLayout: View {
                     .padding(.leading, scene.wingInset)
                     .frame(width: wingWidth, alignment: .leading)
                 Color.clear.frame(width: notchGap)
-                scene.trailing
-                    .padding(.trailing, scene.wingInset)
-                    .frame(width: wingWidth, alignment: .trailing)
+                ZStack(alignment: .trailing) {
+                    scene.trailing
+                        .opacity(showsClose ? 0 : 1)
+                        .accessibilityHidden(showsClose)
+                    HudNotchCloseButton(color: closeColor, action: close)
+                        .opacity(showsClose ? 1 : 0)
+                        .allowsHitTesting(showsClose)
+                        .accessibilityHidden(!showsClose)
+                }
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: showsClose)
+                .padding(.trailing, scene.wingInset)
+                .frame(width: wingWidth, alignment: .trailing)
             }
             .frame(height: shellHeight)
             .clipped()
@@ -219,6 +251,27 @@ struct HudNotchSceneLayout: View {
         }
         .frame(width: size.width, height: shellHeight + size.contentHeight, alignment: .top)
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// The small × a dismissible scene shows on hover.
+struct HudNotchCloseButton: View {
+    var color: Color
+    var action: () -> Void
+    @State private var hovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "xmark")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(color.opacity(hovered ? 1 : 0.75))
+                .frame(width: 18, height: 18)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovered = $0 }
+        .help("Dismiss")
+        .accessibilityLabel("Dismiss")
     }
 }
 
