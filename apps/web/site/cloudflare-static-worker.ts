@@ -5,7 +5,7 @@ const DEFAULT_WORKERS_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct';
 // Product SPAs vendored into site/out/<name>/ and served at /<name>.
 // Directory + file paths resolve via ASSETS; anything else under the root
 // is a client-side route and falls back to the product's index.html.
-const PRODUCT_ROOTS = ['arc'];
+const PRODUCT_ROOTS = ['arc', 'studio'];
 
 interface Env {
   ASSETS: {
@@ -211,8 +211,9 @@ async function serveProductRoute(request: Request, env: Env) {
   }
 
   // A client-side route inside the product SPA — hand it the shell so
-  // the router can resolve the path itself.
-  url.pathname = `/${product}/index.html`;
+  // the router can resolve the path itself. Ask for the directory, not
+  // index.html: the assets binding answers /index.html with a redirect.
+  url.pathname = `/${product}/`;
   return env.ASSETS.fetch(new Request(url, request));
 }
 
