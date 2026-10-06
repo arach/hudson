@@ -11,6 +11,10 @@ public struct HudNotchStage: Equatable, Sendable {
     public private(set) var focusedID: String?
     /// How many activities to keep. Ongoing ones are never evicted.
     public var capacity: Int
+    /// Activities the person put away, by id, with the state each was in.
+    /// Their sender's next posts in that same state stay off the stage; a new
+    /// state (working to done, say) brings the activity back.
+    public private(set) var putAway: [String: HudNotchActivityState] = [:]
 
     public init(capacity: Int = 8) {
         self.capacity = max(1, capacity)
@@ -24,6 +28,9 @@ public struct HudNotchStage: Equatable, Sendable {
         public var isNew: Bool
         /// The state moved (for example working → waiting); hosts animate this.
         public var stateChanged: Bool
+        /// The person put this activity away and it hasn't moved on: the
+        /// stage kept it off.
+        public var isPutAway: Bool = false
     }
 
     // MARK: Queries
@@ -62,6 +69,13 @@ public struct HudNotchStage: Equatable, Sendable {
         var activity = incoming
         activity.updatedAt = now
 
+        if let state = putAway[activity.id] {
+            if state == activity.state {
+                return Change(wantsAttention: false, isNew: false, stateChanged: false, isPutAway: true)
+            }
+            putAway[activity.id] = nil
+        }
+
         guard let index = activities.firstIndex(where: { $0.id == activity.id }) else {
             activities.insert(activity, at: 0)
             focusedID = activity.id
@@ -85,8 +99,25 @@ public struct HudNotchStage: Equatable, Sendable {
         return Change(wantsAttention: wantsAttention, isNew: false, stateChanged: stateChanged)
     }
 
+    /// Removes an activity for the host. It also forgets that the person put
+    /// it away, so the id is fresh again.
     @discardableResult
     public mutating func dismiss(id: String) -> HudNotchActivity? {
+        putAway[id] = nil
+        return remove(id: id)
+    }
+
+    /// The person put an activity away (the ×, a swipe up, Escape, Dismiss).
+    /// It leaves the stage, and stays off while its sender keeps posting the
+    /// same state.
+    @discardableResult
+    public mutating func putAway(id: String) -> HudNotchActivity? {
+        guard let removed = remove(id: id) else { return nil }
+        putAway[id] = removed.state
+        return removed
+    }
+
+    private mutating func remove(id: String) -> HudNotchActivity? {
         guard let index = activities.firstIndex(where: { $0.id == id }) else { return nil }
         let removed = activities.remove(at: index)
         if focusedID == id { focusedID = nil }
