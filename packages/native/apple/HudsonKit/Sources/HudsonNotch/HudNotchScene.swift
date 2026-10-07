@@ -18,11 +18,15 @@ import SwiftUI
 ///
 /// Every scene can be put away by the person, the same way everywhere: a
 /// small × on the trailing wing while the pointer is over the notch, a swipe
-/// up over it, Escape while it has the keyboard, or right-click, Dismiss. The
-/// shape tucks back into the housing and `onDismiss` hears how. Keep the scene
+/// up over it, Escape while it has the keyboard (or anywhere, with
+/// `escapeWhileVisible`), or right-click, Dismiss. The shape tucks back into the housing and `onDismiss` hears how. Keep the scene
 /// away after that until something new happens: presenting it again on the
 /// next state tick brings it straight back. A scene that must stay (a step the
 /// person has to finish) sets `dismissible` to false.
+///
+/// A scene the person should be able to wave off without clicking it first,
+/// such as a receipt or a card that asks for a moment, sets
+/// `escapeWhileVisible`: Escape in any app puts it away while it shows.
 public struct HudNotchScene {
     public struct Size: Hashable, Sendable {
         /// The silhouette's full width, wings included.
@@ -60,6 +64,21 @@ public struct HudNotchScene {
     public var onFlagsChanged: (@MainActor (NSEvent) -> Bool)?
     /// The person can put it away. True unless the host says otherwise.
     public var dismissible: Bool
+    /// Escape puts the scene away while it is on screen, even when the notch
+    /// doesn't have the keyboard. Off by default.
+    ///
+    /// The notch still never takes key. While such a scene shows, the
+    /// controller watches key presses with an `NSEvent` monitor and puts the
+    /// scene away (`onDismiss` hears `.escape`) on a bare Escape. The press is
+    /// observed, not taken: it also reaches the app in front, which may close
+    /// its own dialog or leave full screen with it. Only presses into the
+    /// notch itself are consumed, as before.
+    ///
+    /// Presses in other apps reach the monitor only when the host is trusted
+    /// for Accessibility (`AXIsProcessTrusted()`). Without it, Escape still
+    /// works in the host's own windows and once the notch has the keyboard.
+    /// Ignored when `dismissible` is false.
+    public var escapeWhileVisible: Bool
     /// The scene left the notch through `dismissScene(_:)`: by the person
     /// (`byPerson`), or by the host. Not called for `present(nil)` or for a
     /// new scene taking its place.
@@ -75,6 +94,7 @@ public struct HudNotchScene {
         onKeyDown: (@MainActor (NSEvent) -> Bool)? = nil,
         onFlagsChanged: (@MainActor (NSEvent) -> Bool)? = nil,
         dismissible: Bool = true,
+        escapeWhileVisible: Bool = false,
         onDismiss: (@MainActor (HudNotchDismissal) -> Void)? = nil,
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder trailing: () -> Trailing,
@@ -89,6 +109,7 @@ public struct HudNotchScene {
         self.onKeyDown = onKeyDown
         self.onFlagsChanged = onFlagsChanged
         self.dismissible = dismissible
+        self.escapeWhileVisible = escapeWhileVisible
         self.onDismiss = onDismiss
         self.leading = AnyView(leading())
         self.trailing = AnyView(trailing())
