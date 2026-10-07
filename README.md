@@ -18,6 +18,12 @@ Navigation, side panels, command palettes, status bars, draggable windows, and a
 
 [Try ARC →](https://hudsonkit.com/arc/) · [Read the source →](https://github.com/arach/arc)
 
+[![A Studio study in the hosted demo: the Talkie “One thought” narrative, framed by Studio’s sidebar of foundations, proposals, and studies.](./docs/images/studio-showcase.png)](https://hudsonkit.com/studio/)
+
+**[Studio](https://hudsonkit.com/studio/)** is a design studio that lives in your repo. Studies are React components and docs are Markdown, kept beside the code they describe. Studio supplies the page registry, doc and code viewers, and agent feedback; Hudson supplies the shell with its sidebar, page strip, and status bar. The screenshot shows Studio’s own studio, which is also the hosted demo.
+
+[Try Studio →](https://hudsonkit.com/studio/) · [Read the source →](https://github.com/hudsonkit/studio)
+
 ## Start building
 
 ```sh
