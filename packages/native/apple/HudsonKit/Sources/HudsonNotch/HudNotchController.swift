@@ -15,7 +15,9 @@ import SwiftUI
 ///
 /// Whatever the notch shows, the person puts it away the same way: the ×
 /// that shows on hover, a swipe up over the notch, Escape while it has the
-/// keyboard, or right-click, Dismiss. See `putAway(_:)`.
+/// keyboard, or right-click, Dismiss. See `putAway(_:)`. A scene with
+/// `escapeWhileVisible` also goes away on Escape pressed in any app while it
+/// shows; that press is observed, never taken from the app in front.
 @MainActor
 public final class HudNotchController: ObservableObject {
     public struct Copy: Sendable {
@@ -55,7 +57,9 @@ public final class HudNotchController: ObservableObject {
     @Published public private(set) var stage: HudNotchStage
     @Published public private(set) var configuration: HudNotchConfiguration
     /// Host content shown in place of the stage. See `present(_:)`.
-    @Published public private(set) var scene: HudNotchScene?
+    @Published public private(set) var scene: HudNotchScene? {
+        didSet { syncEscapeWatch() }
+    }
     /// Room the scenes shown so far need. It only grows, so the panel never
     /// shrinks under a shape that is still animating down.
     @Published private var sceneRoom: CGSize = .zero
@@ -77,6 +81,9 @@ public final class HudNotchController: ObservableObject {
     private var retractTask: Task<Void, Never>?
     private var keyMonitor: Any?
     private var scrollMonitor: Any?
+    /// Watches key presses in other apps while a scene with
+    /// `escapeWhileVisible` is up. Nil the rest of the time.
+    private var escapeMonitor: Any?
     private var swipe = HudNotchSwipe()
     /// The scene last presented, kept so its content can fade out after
     /// `present(nil)`.
@@ -108,6 +115,9 @@ public final class HudNotchController: ObservableObject {
         }
         if let scrollMonitor {
             NSEvent.removeMonitor(scrollMonitor)
+        }
+        if let escapeMonitor {
+            NSEvent.removeMonitor(escapeMonitor)
         }
     }
 
@@ -562,7 +572,13 @@ public final class HudNotchController: ObservableObject {
     /// True when the scene, or Escape, consumed the event. The scene hears
     /// keys first, so a scene that uses Escape itself keeps it.
     private func routeKey(_ event: NSEvent) -> Bool {
-        guard let panel, event.window === panel else { return false }
+        guard let panel else { return false }
+        guard event.window === panel else {
+            // One of the host's own windows has the keyboard: the same as a
+            // press in another app, observed and passed on.
+            if event.type == .keyDown { escapePressedElsewhere(event) }
+            return false
+        }
         if showsScene, let scene {
             let consumed: Bool
             switch event.type {
@@ -573,12 +589,64 @@ public final class HudNotchController: ObservableObject {
             if consumed { return true }
         }
         let bare = event.modifierFlags.intersection([.command, .option, .control, .shift]).isEmpty
-        guard event.type == .keyDown, event.keyCode == Self.escapeKeyCode, bare, canPutAway else { return false }
+        guard event.type == .keyDown, event.keyCode == HudNotchEscape.keyCode, bare, canPutAway else { return false }
         putAway(.escape)
         return true
     }
 
-    private static let escapeKeyCode: UInt16 = 53
+    // MARK: Escape while visible
+
+    /// Watches key presses in other apps only while the scene asks for it.
+    /// A global monitor can't consume events, and that is what we want: the
+    /// app in front keeps its Escape. The notch's own panel and the host's
+    /// windows go through the local monitor instead.
+    private func syncEscapeWatch() {
+        let wants = scene.map { $0.escapeWhileVisible && $0.dismissible } ?? false
+        if wants, escapeMonitor == nil {
+            escapeMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                let bareEscape = Self.isBareEscape(event)
+                guard bareEscape else { return }
+                Task { @MainActor in self?.putAwayOnEscapeElsewhere() }
+            }
+        } else if !wants, let monitor = escapeMonitor {
+            NSEvent.removeMonitor(monitor)
+            escapeMonitor = nil
+        }
+    }
+
+    /// True while key presses in other apps are watched for Escape.
+    public var watchesEscapeWhileVisible: Bool { escapeMonitor != nil }
+
+    private func escapePressedElsewhere(_ event: NSEvent) {
+        guard Self.isBareEscape(event) else { return }
+        putAwayOnEscapeElsewhere()
+    }
+
+    /// An Escape the notch only overheard: the scene leaves if it is on
+    /// screen and asked for it. Nothing else on the notch is put away.
+    private func putAwayOnEscapeElsewhere() {
+        guard let scene else { return }
+        let onScreen = isVisible && isPresented && showsScene
+        guard HudNotchEscape.putsAwayWhileVisible(
+            bareEscape: true,
+            sceneOnScreen: onScreen,
+            escapeWhileVisible: scene.escapeWhileVisible,
+            dismissible: scene.dismissible
+        ) else { return }
+        dismissScene(.escape)
+    }
+
+    private nonisolated static func isBareEscape(_ event: NSEvent) -> Bool {
+        let flags = event.modifierFlags
+        return HudNotchEscape.isBareEscape(
+            keyCode: event.keyCode,
+            control: flags.contains(.control),
+            option: flags.contains(.option),
+            shift: flags.contains(.shift),
+            command: flags.contains(.command),
+            isRepeat: event.isARepeat
+        )
+    }
 
     /// A swipe up over the notch puts away what it shows.
     private func routeScroll(_ event: NSEvent) {

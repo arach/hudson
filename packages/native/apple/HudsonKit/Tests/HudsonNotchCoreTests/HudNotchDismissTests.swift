@@ -11,6 +11,29 @@ final class HudNotchDismissTests: XCTestCase {
         }
     }
 
+    // MARK: Escape while visible
+
+    func testOnlyABareFirstEscapeCounts() {
+        XCTAssertTrue(HudNotchEscape.isBareEscape(keyCode: 53))
+        XCTAssertFalse(HudNotchEscape.isBareEscape(keyCode: 36), "Return is not Escape")
+        XCTAssertFalse(HudNotchEscape.isBareEscape(keyCode: 53, command: true), "⌘⎋ belongs to the app")
+        XCTAssertFalse(HudNotchEscape.isBareEscape(keyCode: 53, option: true))
+        XCTAssertFalse(HudNotchEscape.isBareEscape(keyCode: 53, control: true))
+        XCTAssertFalse(HudNotchEscape.isBareEscape(keyCode: 53, shift: true))
+        XCTAssertFalse(HudNotchEscape.isBareEscape(keyCode: 53, isRepeat: true), "a held Escape puts away one scene")
+    }
+
+    func testEscapeElsewherePutsAwayOnlyAnOptedInSceneOnScreen() {
+        XCTAssertTrue(HudNotchEscape.putsAwayWhileVisible(bareEscape: true, sceneOnScreen: true, escapeWhileVisible: true, dismissible: true))
+        XCTAssertFalse(HudNotchEscape.putsAwayWhileVisible(bareEscape: true, sceneOnScreen: true, escapeWhileVisible: false, dismissible: true),
+                       "off by default: the scene waits for the keyboard")
+        XCTAssertFalse(HudNotchEscape.putsAwayWhileVisible(bareEscape: true, sceneOnScreen: true, escapeWhileVisible: true, dismissible: false),
+                       "a scene that must stay stays")
+        XCTAssertFalse(HudNotchEscape.putsAwayWhileVisible(bareEscape: true, sceneOnScreen: false, escapeWhileVisible: true, dismissible: true),
+                       "covered by a card or tucked away")
+        XCTAssertFalse(HudNotchEscape.putsAwayWhileVisible(bareEscape: false, sceneOnScreen: true, escapeWhileVisible: true, dismissible: true))
+    }
+
     // MARK: Swipe
 
     func testFingersUpWithNaturalScrollingPutsAwayOnce() {

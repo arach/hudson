@@ -9,7 +9,8 @@ import Foundation
 ///   pointer is over the notch.
 /// - `swipe`: a scroll up over the notch (two fingers up on a trackpad), the
 ///   "put it away" gesture.
-/// - `escape`: Escape while the notch has the keyboard.
+/// - `escape`: Escape while the notch has the keyboard, or anywhere while a
+///   scene that opted into `escapeWhileVisible` is on screen.
 /// - `menu`: right-click, Dismiss.
 public enum HudNotchDismissal: String, CaseIterable, Codable, Equatable, Sendable {
     case closeButton
@@ -101,5 +102,43 @@ public struct HudNotchSwipe: Equatable, Sendable {
         guard travel >= threshold else { return false }
         fired = true
         return true
+    }
+}
+
+/// Escape as the "put it away" key, kept free of AppKit so hosts and tests
+/// can check it without a screen.
+///
+/// A scene normally hears Escape only while the notch has the keyboard. One
+/// that opts into `escapeWhileVisible` also goes away on an Escape pressed in
+/// any app while the scene is on screen. That press is only observed: it still
+/// reaches the app the person is typing in. See `HudNotchScene.escapeWhileVisible`.
+public enum HudNotchEscape {
+    /// The Escape key's virtual key code.
+    public static let keyCode: UInt16 = 53
+
+    /// A bare Escape press: no ⌘ ⌥ ⌃ ⇧ held, and not a key repeat. A held
+    /// Escape puts away one scene, never the next one to show up.
+    public static func isBareEscape(
+        keyCode: UInt16,
+        control: Bool = false,
+        option: Bool = false,
+        shift: Bool = false,
+        command: Bool = false,
+        isRepeat: Bool = false
+    ) -> Bool {
+        keyCode == Self.keyCode && !control && !option && !shift && !command && !isRepeat
+    }
+
+    /// Whether an Escape pressed while the notch doesn't have the keyboard
+    /// puts the scene away: the press is a bare Escape, a scene is on screen
+    /// (not covered by an open card, not tucked away), it opted in, and the
+    /// person may put it away.
+    public static func putsAwayWhileVisible(
+        bareEscape: Bool,
+        sceneOnScreen: Bool,
+        escapeWhileVisible: Bool,
+        dismissible: Bool
+    ) -> Bool {
+        bareEscape && sceneOnScreen && escapeWhileVisible && dismissible
     }
 }
